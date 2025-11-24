@@ -1,0 +1,174 @@
+import React from 'react'
+import { useTheme } from '../../context/theme'
+import folderIcon from '../../assets/icons/folderIcon.png'
+import peopleIcon from '../../assets/icons/peopleIcon.png'
+import calanderIcon from '../../assets/icons/calanderIcon.png'
+
+const OrganisationCard = ({ organisation }) => {
+  const t = useTheme()
+  const hasLogo = organisation.hasLogo || false
+
+  return (
+    <div
+      style={{
+        backgroundColor: t.colors.organisationCardBackground,
+        borderBlockColor:'#ffffff',
+        borderWidth:0.2,
+        backdropFilter: 'blur(80px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(80px) saturate(180%)',
+        borderRadius: '12px',
+        border: '1px solid rgba(255, 255, 255, 1)',
+        // boxShadow:
+        //   '0 8px 32px 0 rgba(208, 209, 226, 0.37), ' +
+        //   'inset 0 2px 4px rgba(255, 255, 255, 0.5), ' +
+        //   'inset 0 -2px 4px rgba(0, 0, 0, 0.1), ' +
+        //   'inset 2px 0 4px rgba(255, 255, 255, 0.3), ' +
+        //   'inset -2px 0 4px rgba(0, 0, 0, 0.05)',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        width: '280px',
+        transition: 'transform 0.3s, box-shadow 0.3s, background-color 0.3s',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateY(-4px)'
+        // e.currentTarget.style.boxShadow =
+        //   '0 12px 48px 0 rgba(31, 38, 135, 0.45), ' +
+        //   'inset 0 2px 6px rgba(255, 255, 255, 0.6), ' +
+        //   'inset 0 -2px 6px rgba(0, 0, 0, 0.12), ' +
+        //   'inset 2px 0 6px rgba(255, 255, 255, 0.4), ' +
+        //   'inset -2px 0 6px rgba(0, 0, 0, 0.08)'
+        e.currentTarget.style.backgroundColor = 'rgba(170, 173, 174, 0.2)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateY(0)'
+        // e.currentTarget.style.boxShadow =
+        //   '0 8px 32px 0 rgba(31, 38, 135, 0.37), ' +
+        //   'inset 0 2px 4px rgba(255, 255, 255, 0.5), ' +
+        //   'inset 0 -2px 4px rgba(0, 0, 0, 0.1), ' +
+        //   'inset 2px 0 4px rgba(255, 255, 255, 0.3), ' +
+        //   'inset -2px 0 4px rgba(0, 0, 0, 0.05)'
+        e.currentTarget.style.backgroundColor = t.colors.organisationCardBackground
+      }}
+    >
+      {/* Logo/Image Area */}
+      <div
+        style={{
+          height: '120px',
+          backgroundColor: hasLogo ? '#1e40af' : '#f3f4f6',
+          display: 'flex',
+          alignItems: 'center',
+          borderColor:'#ffffff',
+          marginLeft: 10,
+          marginRight: 10,
+          marginTop: 10,
+          borderRadius: 10,
+          justifyContent: 'center',
+          position: 'relative',
+        }}
+      >
+        {hasLogo ? (
+          <div style={{ textAlign: 'center' }}>
+            <div
+              style={{
+                width: '60px',
+                height: '60px',
+                backgroundColor: '#3b82f6',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 8px',
+                fontSize: '32px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+              }}
+            >
+              Q
+            </div>
+            <div
+              style={{
+                fontSize: '10px',
+                fontWeight: 'bold',
+                color: '#ffffff',
+                letterSpacing: '1px',
+              }}
+            >
+              QUANTUM SOLUTIONS
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Content Area */}
+      <div style={{ padding: t.spacing(4) }}>
+        <h3
+          style={{
+            margin: 0,
+            marginBottom: t.spacing(4),
+            fontSize: t.font.size.lg,
+            fontWeight: t.font.weight.semiBold,
+            color: '#1f2937',
+            fontFamily: t.font.family, // Poppins
+          }}
+        >
+          {organisation.name}
+        </h3>
+
+        {/* Statistics */}
+        <div
+          style={{
+            display: 'flex',
+            gap: t.spacing(4),
+            alignItems: 'center',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: t.spacing(1.5) }}>
+            <img
+              src={folderIcon}
+              alt="Folders"
+              style={{
+                width: '20px',
+                height: '20px',
+                objectFit: 'contain',
+              }}
+            />
+            <span style={{ fontSize: t.font.size.md, color: '#6b7280', fontFamily: t.font.family }}>
+              {organisation.folders || 10}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: t.spacing(1.5) }}>
+            <img
+              src={peopleIcon}
+              alt="Members"
+              style={{
+                width: '20px',
+                height: '20px',
+                objectFit: 'contain',
+              }}
+            />
+            <span style={{ fontSize: t.font.size.md, color: '#6b7280', fontFamily: t.font.family }}>
+              {organisation.members || 10}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: t.spacing(1.5) }}>
+            <img
+              src={calanderIcon}
+              alt="Projects"
+              style={{
+                width: '20px',
+                height: '20px',
+                objectFit: 'contain',
+              }}
+            />
+            <span style={{ fontSize: t.font.size.md, color: '#6b7280', fontFamily: t.font.family }}>
+              {organisation.projects || 10}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default OrganisationCard
+
