@@ -1,4 +1,5 @@
 import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../../context/theme'
 import folderIcon from '../../assets/icons/folderIcon.png'
 import peopleIcon from '../../assets/icons/peopleIcon.png'
@@ -6,18 +7,19 @@ import calanderIcon from '../../assets/icons/calanderIcon.png'
 
 const OrganisationCard = ({ organisation }) => {
   const t = useTheme()
+  const navigate = useNavigate()
   const hasLogo = organisation.hasLogo || false
 
   return (
     <div
       style={{
         backgroundColor: t.colors.organisationCardBackground,
-        borderBlockColor:'#ffffff',
-        borderWidth:0.2,
+        borderBlockColor: t.colors.cardBorder,
+        borderWidth: 0.2,
         backdropFilter: 'blur(80px) saturate(180%)',
         WebkitBackdropFilter: 'blur(80px) saturate(180%)',
         borderRadius: '12px',
-        border: '1px solid rgba(255, 255, 255, 1)',
+        border: `1px solid ${t.colors.cardBorder}`,
         // boxShadow:
         //   '0 8px 32px 0 rgba(208, 209, 226, 0.37), ' +
         //   'inset 0 2px 4px rgba(255, 255, 255, 0.5), ' +
@@ -29,6 +31,7 @@ const OrganisationCard = ({ organisation }) => {
         width: '280px',
         transition: 'transform 0.3s, box-shadow 0.3s, background-color 0.3s',
       }}
+      onClick={() => navigate(`/organisations/${organisation.id}/overview`)}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-4px)'
         // e.currentTarget.style.boxShadow =
@@ -54,10 +57,10 @@ const OrganisationCard = ({ organisation }) => {
       <div
         style={{
           height: '120px',
-          backgroundColor: hasLogo ? '#1e40af' : '#f3f4f6',
+          backgroundColor: hasLogo ? t.colors.primary : t.colors.secondary,
           display: 'flex',
           alignItems: 'center',
-          borderColor:'#ffffff',
+          borderColor: t.colors.cardBorder,
           marginLeft: 10,
           marginRight: 10,
           marginTop: 10,
@@ -72,7 +75,7 @@ const OrganisationCard = ({ organisation }) => {
               style={{
                 width: '60px',
                 height: '60px',
-                backgroundColor: '#3b82f6',
+                backgroundColor: t.colors.primary,
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -80,7 +83,7 @@ const OrganisationCard = ({ organisation }) => {
                 margin: '0 auto 8px',
                 fontSize: '32px',
                 fontWeight: 'bold',
-                color: '#ffffff',
+                color: t.colors.buttonText,
               }}
             >
               Q
@@ -89,7 +92,7 @@ const OrganisationCard = ({ organisation }) => {
               style={{
                 fontSize: '10px',
                 fontWeight: 'bold',
-                color: '#ffffff',
+                color: t.colors.buttonText,
                 letterSpacing: '1px',
               }}
             >
@@ -132,7 +135,7 @@ const OrganisationCard = ({ organisation }) => {
                 objectFit: 'contain',
               }}
             />
-            <span style={{ fontSize: t.font.size.md, color: '#6b7280', fontFamily: t.font.family }}>
+            <span style={{ fontSize: t.font.size.md, color: t.colors.textSecondary, fontFamily: t.font.family }}>
               {organisation.folders || 10}
             </span>
           </div>
@@ -146,7 +149,7 @@ const OrganisationCard = ({ organisation }) => {
                 objectFit: 'contain',
               }}
             />
-            <span style={{ fontSize: t.font.size.md, color: '#6b7280', fontFamily: t.font.family }}>
+            <span style={{ fontSize: t.font.size.md, color: t.colors.textSecondary, fontFamily: t.font.family }}>
               {organisation.members || 10}
             </span>
           </div>
@@ -160,7 +163,7 @@ const OrganisationCard = ({ organisation }) => {
                 objectFit: 'contain',
               }}
             />
-            <span style={{ fontSize: t.font.size.md, color: '#6b7280', fontFamily: t.font.family }}>
+            <span style={{ fontSize: t.font.size.md, color: t.colors.textSecondary, fontFamily: t.font.family }}>
               {organisation.projects || 10}
             </span>
           </div>

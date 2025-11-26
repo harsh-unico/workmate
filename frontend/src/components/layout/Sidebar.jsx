@@ -10,6 +10,9 @@ import notificationsIcon from '../../assets/icons/notificationsIcon.png'
 import profileIcon from '../../assets/icons/profileIcon.png'
 import settingsIcon from '../../assets/icons/settingsIcon.png'
 import signoutIcon from '../../assets/icons/signoutIcon.png'
+import summaryIcon from '../../assets/icons/summaryIcon.png'
+import teamIcon from '../../assets/icons/teamIcon.png'
+import projectIcon from '../../assets/icons/projectIcon.png'
 
 const Sidebar = () => {
   const t = useTheme()
@@ -17,13 +20,32 @@ const Sidebar = () => {
   const location = useLocation()
   const { logout } = useAuth()
 
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: dashboardIcon, path: ROUTES.DASHBOARD },
-    { id: 'organisations', label: 'Organisations', icon: orgsIcon, path: ROUTES.ORGANISATIONS },
-    { id: 'notifications', label: 'Notifications', icon: notificationsIcon, path: ROUTES.NOTIFICATIONS },
-    { id: 'profile', label: 'Profile', icon: profileIcon, path: ROUTES.PROFILE },
-    { id: 'settings', label: 'Settings', icon: settingsIcon, path: ROUTES.SETTINGS },
-  ]
+  const isOrganisationDetail = location.pathname.startsWith('/organisations/') && location.pathname.split('/').length >= 4
+
+  let menuItems
+
+  if (isOrganisationDetail) {
+    const parts = location.pathname.split('/')
+    const orgId = parts[2]
+
+    const orgPath = (section) => `/organisations/${orgId}/${section}`
+
+    menuItems = [
+      { id: 'overview', label: 'Overview', icon: dashboardIcon, path: orgPath('overview') },
+      { id: 'projects', label: 'Projects', icon: projectIcon, path: orgPath('projects') },
+      { id: 'team', label: 'Team Members', icon: teamIcon, path: orgPath('team') },
+      { id: 'reports', label: 'Summary & Reports', icon: summaryIcon, path: orgPath('reports') },
+      { id: 'settings', label: 'Settings', icon: settingsIcon, path: orgPath('settings') },
+    ]
+  } else {
+    menuItems = [
+      { id: 'dashboard', label: 'Dashboard', icon: dashboardIcon, path: ROUTES.DASHBOARD },
+      { id: 'organisations', label: 'Organisations', icon: orgsIcon, path: ROUTES.ORGANISATIONS },
+      { id: 'notifications', label: 'Notifications', icon: notificationsIcon, path: ROUTES.NOTIFICATIONS },
+      { id: 'profile', label: 'Profile', icon: profileIcon, path: ROUTES.PROFILE },
+      { id: 'settings', label: 'Settings', icon: settingsIcon, path: ROUTES.SETTINGS },
+    ]
+  }
 
   const handleSignOut = async () => {
     await logout()
@@ -31,8 +53,11 @@ const Sidebar = () => {
   }
 
   const isActive = (path) => {
-    if (path === ROUTES.DASHBOARD) {
+    if (!isOrganisationDetail && path === ROUTES.DASHBOARD) {
       return location.pathname === ROUTES.DASHBOARD
+    }
+    if (isOrganisationDetail) {
+      return location.pathname === path
     }
     return location.pathname.startsWith(path)
   }
@@ -42,7 +67,7 @@ const Sidebar = () => {
       style={{
         width: '320px',
         height: '100vh',
-        backgroundColor: t.colors.cardBackground, // Use login card background color
+        backgroundColor: t.colors.primary,
         display: 'flex',
         flexDirection: 'column',
         padding: t.spacing(4),

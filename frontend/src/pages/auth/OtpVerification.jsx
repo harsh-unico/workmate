@@ -3,13 +3,13 @@ import {
   AuthCard,
   Heading,
   BodyText,
-  PrimaryButton,
+  AuthButton,
   OtpInput,
-} from '../components'
-import { useTheme } from '../context/theme'
-import { ROUTES } from '../utils/constants'
-import logo from '../assets/icons/logo.png'
-import authBackgroundVideo from '../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
+} from '../../components'
+import { useTheme } from '../../context/theme'
+import { ROUTES } from '../../utils/constants'
+import logo from '../../assets/icons/logo.png'
+import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
 
 const OTP_LENGTH = 6
 const INITIAL_SECONDS = 60
@@ -111,9 +111,9 @@ const OtpVerification = () => {
           </span>
         </div>
 
-        <PrimaryButton type="submit" disabled={!isFormValid || isSubmitting}>
+        <AuthButton type="submit" disabled={!isFormValid || isSubmitting}>
           {isSubmitting ? 'Verifying...' : 'Verify'}
-        </PrimaryButton>
+        </AuthButton>
       </form>
 
       <div

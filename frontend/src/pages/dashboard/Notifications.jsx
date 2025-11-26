@@ -1,8 +1,8 @@
 import React from 'react'
-import { DashboardLayout } from '../layouts'
-import { useTheme } from '../context/theme'
+import { DashboardLayout } from '../../layouts'
+import { useTheme } from '../../context/theme'
 
-const Settings = () => {
+const Notifications = () => {
   const t = useTheme()
 
   return (
@@ -23,12 +23,12 @@ const Settings = () => {
             fontFamily: t.font.heading, // Song Myung
           }}
         >
-          Settings
+          Notifications
         </h1>
       </div>
     </DashboardLayout>
   )
 }
 
-export default Settings
+export default Notifications
 

@@ -1,19 +1,29 @@
 import React from 'react'
 import { useTheme } from '../../context/theme'
 
-const PrimaryButton = ({ children, fullWidth = true, disabled = false, ...rest }) => {
+const PrimaryButton = ({
+  children,
+  disabled = false,
+  icon,
+  ...rest
+}) => {
   const t = useTheme()
 
   return (
     <button
       style={{
-        width: fullWidth ? '100%' : 'auto',
-        padding: `${t.spacing(3)} ${t.spacing(4)}`,
-        borderRadius: t.radius.button,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: t.spacing(2),
+        width: 'auto',
+        minWidth: '180px',
+        minHeight: '50px',
+        padding: `${t.spacing(2.5)} ${t.spacing(5)}`,
+        borderRadius: '15px',
         border: 'none',
         cursor: disabled ? 'not-allowed' : 'pointer',
-        backgroundImage: disabled ? 'none' : t.colors.buttonBackground,
-        backgroundColor: disabled ? '#6b7280' : 'transparent',
+        backgroundColor: t.colors.buttonPrimary,
         opacity: disabled ? 0.7 : 1,
         color: t.colors.buttonText,
         fontSize: t.font.size.md,
@@ -23,6 +33,21 @@ const PrimaryButton = ({ children, fullWidth = true, disabled = false, ...rest }
       disabled={disabled}
       {...rest}
     >
+      {icon && (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '28px',
+            height: '28px',
+            fontSize: '18px',
+            lineHeight: 5,
+          }}
+        >
+          {icon}
+        </span>
+      )}
       {children}
     </button>
   )

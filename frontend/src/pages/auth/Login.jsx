@@ -6,17 +6,17 @@ import {
   BodyText,
   TextField,
   PasswordField,
-  PrimaryButton,
+  AuthButton,
   ErrorMessage,
   FieldError,
-} from '../components'
-import { useTheme } from '../context/theme'
-import { useForm } from '../hooks/useForm'
-import { validateEmail, validatePassword } from '../validators'
-import { useAuth } from '../hooks/useAuth'
-import { ROUTES } from '../utils/constants'
-import logo from '../assets/icons/logo.png'
-import loginBackgroundVideo from '../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
+} from '../../components'
+import { useTheme } from '../../context/theme'
+import { useForm } from '../../hooks/useForm'
+import { validateEmail, validatePassword } from '../../validators'
+import { useAuth } from '../../hooks/useAuth'
+import { ROUTES } from '../../utils/constants'
+import logo from '../../assets/icons/logo.png'
+import loginBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
 
 const Login = () => {
   const t = useTheme()
@@ -133,14 +133,17 @@ const Login = () => {
               cursor: 'pointer',
               padding: 0,
             }}
+            onClick={() => {
+              window.location.href = ROUTES.FORGOT_PASSWORD
+            }}
           >
             Forgot Password?
           </button>
         </div>
 
-        <PrimaryButton type="submit" disabled={!isFormValid || isSubmitting}>
+        <AuthButton type="submit" disabled={!isFormValid || isSubmitting}>
           {isSubmitting ? 'Logging in...' : 'Login'}
-        </PrimaryButton>
+        </AuthButton>
       </form>
 
       <div

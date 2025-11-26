@@ -1,6 +1,6 @@
 import React from 'react'
-import { DashboardLayout } from '../layouts'
-import { useTheme } from '../context/theme'
+import { DashboardLayout } from '../../layouts'
+import { useTheme } from '../../context/theme'
 
 const Profile = () => {
   const t = useTheme()

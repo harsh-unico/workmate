@@ -4,7 +4,7 @@ import addIcon from '../../assets/icons/addIcon.png'
 
 const SecondaryButton = ({ children, icon, onClick, ...rest }) => {
   const t = useTheme()
-  const baseBackground = t.colors.cardBackground
+  const baseBackground = t.colors.buttonSecondary
   const baseShadow =
     '0 10px 20px rgba(55, 65, 81, 0.35), 0 4px 8px rgba(0, 0, 0, 0.2)'
   const hoverShadow =
@@ -21,7 +21,7 @@ const SecondaryButton = ({ children, icon, onClick, ...rest }) => {
         border: 'none',
         cursor: 'pointer',
         backgroundColor: baseBackground,
-        color: '#ffffff',
+        color: t.colors.buttonText,
         fontSize: t.font.size.md,
         fontWeight: t.font.weight.medium,
         fontFamily: t.font.family, // Poppins
@@ -30,7 +30,7 @@ const SecondaryButton = ({ children, icon, onClick, ...rest }) => {
       }}
       onClick={onClick}
       onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor = '#4b5563'
+        e.currentTarget.style.backgroundColor = t.colors.primary
         e.currentTarget.style.boxShadow = hoverShadow
       }}
       onMouseLeave={(e) => {

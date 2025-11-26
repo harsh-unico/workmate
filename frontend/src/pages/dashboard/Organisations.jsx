@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DashboardLayout } from '../layouts'
-import { OrganisationCard, SecondaryButton, SearchBar } from '../components'
-import { useTheme } from '../context/theme'
-import { ROUTES } from '../utils/constants'
+import { DashboardLayout } from '../../layouts'
+import { OrganisationCard, SecondaryButton, SearchBar, PrimaryButton } from '../../components'
+import { useTheme } from '../../context/theme'
+import { ROUTES } from '../../utils/constants'
+import addIcon from '../../assets/icons/addIcon.png'
 
 const Organisations = () => {
   const t = useTheme()
@@ -12,7 +13,7 @@ const Organisations = () => {
 
   // Dummy data - will be replaced with API data later
   const organisations = [
-    { id: 1, name: 'Quantum Solutions', hasLogo: true, folders: 10, members: 10, projects: 10 },
+    { id: 1, name: 'Quantum Solutions', hasLogo: false, folders: 10, members: 10, projects: 10 },
     { id: 2, name: 'Quantum Solutions', hasLogo: true, folders: 10, members: 10, projects: 10 },
     { id: 3, name: 'Quantum Solutions', hasLogo: true, folders: 10, members: 10, projects: 10 },
     { id: 4, name: 'Quantum Solutions', hasLogo: true, folders: 10, members: 10, projects: 10 },
@@ -28,7 +29,7 @@ const Organisations = () => {
         style={{
           padding: t.spacing(6),
           minHeight: '100vh',
-          backgroundColor: t.colors.backgroundColor,
+          backgroundColor: t.colors.secondary,
         }}
       >
         {/* Header */}
@@ -51,9 +52,18 @@ const Organisations = () => {
           >
             All Organisations
           </h1>
-          <SecondaryButton icon="plus" onClick={() => navigate(ROUTES.CREATE_ORGANISATION)}>
+          <PrimaryButton
+            icon={
+              <img
+                src={addIcon}
+                alt="Add organisation"
+                style={{ width: 22, height: 22 }}
+              />
+            }
+            onClick={() => navigate(ROUTES.CREATE_ORGANISATION)}
+          >
             Create Organisation
-          </SecondaryButton>
+          </PrimaryButton>
         </div>
 
         {/* Search Bar */}

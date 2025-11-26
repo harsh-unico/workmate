@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DashboardLayout } from '../layouts'
-import { PrimaryButton, RichTextEditor } from '../components'
-import { useTheme } from '../context/theme'
-import { ROUTES } from '../utils/constants'
-import building from '../assets/icons/building.png'
-import editIcon from '../assets/icons/editIcon.png'
+import { DashboardLayout } from '../../layouts'
+import { PrimaryButton, RichTextEditor, DashboardSectionCard } from '../../components'
+import { useTheme } from '../../context/theme'
+import { ROUTES } from '../../utils/constants'
+import building from '../../assets/icons/building.png'
+import editIcon from '../../assets/icons/editIcon.png'
 
 const teamSizeOptions = ['1 - 10', '11 - 25', '26 - 50', '51 - 100', '101 - 250', '250+']
 
@@ -75,15 +75,6 @@ const CreateOrganisation = () => {
     </div>
   )
 
-  const cardStyle = {
-    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(170, 173, 174, 0.2))',
-    borderRadius: '24px',
-    padding: t.spacing(6),
-    border: '1px solid rgba(255, 255, 255, 0.6)',
-    boxShadow: '0 25px 60px rgba(15, 23, 42, 0.15)',
-    backdropFilter: 'blur(30px)',
-  }
-
   const handleSubmit = (event) => {
     event.preventDefault()
     // Placeholder for submit logic
@@ -96,7 +87,7 @@ const CreateOrganisation = () => {
         style={{
           padding: t.spacing(6),
           minHeight: '100vh',
-          backgroundColor: '#E3E3E3',
+          backgroundColor: t.colors.backgroundColor,
           display: 'flex',
           justifyContent: 'center',
           overflow: 'hidden',
@@ -134,18 +125,19 @@ const CreateOrganisation = () => {
             </p>
           </div>
 
-          <form
-            className="auth-card-scroll"
-            style={{
-              ...cardStyle,
-              maxHeight: 'calc(100vh - 160px)',
-              overflowY: 'auto',
-              paddingRight: `calc(${t.spacing(6)} + 4px)`,
-            }}
-            onSubmit={handleSubmit}
-          >
+          <DashboardSectionCard>
+            <form
+              className="auth-card-scroll"
+              style={{
+                maxHeight: 'calc(100vh - 190px)',
+                overflowY: 'auto',
+                paddingRight: `calc(${t.spacing(6)} + 4px)`,
+              }}
+              onSubmit={handleSubmit}
+            >
             <div
               style={{
+                paddingTop: t.spacing(6),
                 display: 'flex',
                 gap: t.spacing(6),
                 marginBottom: t.spacing(6),
@@ -414,7 +406,8 @@ const CreateOrganisation = () => {
                 Create Organisation
               </PrimaryButton>
             </div>
-          </form>
+            </form>
+          </DashboardSectionCard>
         </div>
       </div>
     </DashboardLayout>

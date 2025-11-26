@@ -5,19 +5,19 @@ import {
   Label,
   BodyText,
   TextField,
-  PrimaryButton,
+  AuthButton,
   ErrorMessage,
   FieldError,
   PasswordStrengthMeter,
   PasswordField,
-} from '../components'
-import { useTheme } from '../context/theme'
-import { useForm } from '../hooks/useForm'
-import { validateEmail, validatePassword, validateName } from '../validators'
-import { useAuth } from '../hooks/useAuth'
-import { ROUTES } from '../utils/constants'
-import logo from '../assets/icons/logo.png'
-import authBackgroundVideo from '../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
+} from '../../components'
+import { useTheme } from '../../context/theme'
+import { useForm } from '../../hooks/useForm'
+import { validateEmail, validatePassword, validateName } from '../../validators'
+import { useAuth } from '../../hooks/useAuth'
+import { ROUTES } from '../../utils/constants'
+import logo from '../../assets/icons/logo.png'
+import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
 
 const Signup = () => {
   const t = useTheme()
@@ -172,9 +172,9 @@ const Signup = () => {
           <FieldError error={touched.confirmPassword ? errors.confirmPassword : null} />
         </div>
 
-        <PrimaryButton type="submit" disabled={!isFormValid || isSubmitting}>
+        <AuthButton type="submit" disabled={!isFormValid || isSubmitting}>
           {isSubmitting ? 'Creating account...' : 'Create account'}
-        </PrimaryButton>
+        </AuthButton>
       </form>
 
       <div

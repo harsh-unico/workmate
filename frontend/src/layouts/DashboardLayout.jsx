@@ -13,7 +13,7 @@ const DashboardLayout = ({ children }) => {
     <div
       style={{
         display: 'flex',
-        minHeight: '100vh',
+        height: '100vh',
         backgroundColor: t.colors.pageBackground, // Use theme page background
         fontFamily: t.font.family,
       }}

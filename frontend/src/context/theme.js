@@ -1,23 +1,46 @@
 export const theme = {
   colors: {
+    // Core palette
+    primary: '#263238',
+    secondary: '#E3E3E3',
+
+    // Layout backgrounds
     pageBackground: '#dbdbdb', // light grey outer background
-    cardBackground: '#263238',
+    backgroundColor: '#E3E3E3',
+
+    // Cards
+    cardBackground: 'rgba(250, 254, 255, 0.2)', // #FAFEFF at 20% opacity
     organisationCardBackground: 'rgba(250, 254, 255, 0.2)',
-    backgroundColor: '#E3E3E3', // dark panel
-    cardBorder: '#4b5563',
+    cardBorder: '#FFFFFF',
+
+    // Text
     textPrimary: '#ffffff',
-    textSecondary: '#d1d5db',
+    textSecondary: '#000000',
     heading: '#ffffff',
+    textHeadingDark: '#1f2937',
+    textBodyDark: '#4b5563',
+    textMutedDark: '#6b7280',
+    borderLight: '#e5e7eb',
+    accentBlue: '#2563eb',
+
+    // Inputs
     inputBackground: '#374151',
     inputPlaceholder: '#9ca3af',
     inputText: '#f9fafb',
     divider: '#6b7280',
-    buttonBackground: 'linear-gradient(90deg, #6b7280 0%, #9ca3af 100%)',
+
+    // Buttons
+    buttonPrimary: '#263238',
+    buttonSecondary: '#7B858A',
     buttonText: '#ffffff',
+
+    // Links & status
     link: '#60a5fa',
     linkHover: '#93c5fd',
     subtleText: '#9ca3af',
     error: '#f87171',
+    progressTrack: 'rgba(120, 120, 120, 0.2)', // #787878 at 20% opacity
+    progressBar: '#0088FF',
   },
   radius: {
     card: '12px',

@@ -45,6 +45,7 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   ORGANISATIONS: '/organisations',
   CREATE_ORGANISATION: '/organisations/create',
+  ORGANISATION_DETAIL: '/organisations/:id/:section',
   NOTIFICATIONS: '/notifications',
   PROFILE: '/profile',
   SETTINGS: '/settings',
