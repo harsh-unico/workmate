@@ -6,13 +6,13 @@ const ProjectCard = ({ project }) => {
 
   return (
     <div
-      style={{
-        backgroundColor: '#ffffff',
-        borderRadius: '18px',
-        padding: t.spacing(4),
-        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
-        border: '1px solid rgba(148, 163, 184, 0.25)',
-      }}
+    style={{
+      backgroundColor: t.colors.cardBackground,
+      borderRadius: '18px',
+      padding: t.spacing(4),
+      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.15)',
+      border: `1px solid ${t.colors.cardBorder}`,
+    }}
     >
       {/* Title & Due date */}
       <div
@@ -67,7 +67,7 @@ const ProjectCard = ({ project }) => {
               flex: 1,
               height: '6px',
               borderRadius: '999px',
-              backgroundColor: '#e5e7eb',
+              backgroundColor: t.colors.progressTrack,
               overflow: 'hidden',
             }}
           >
@@ -75,7 +75,7 @@ const ProjectCard = ({ project }) => {
               style={{
                 width: `${project.progress}%`,
                 height: '100%',
-                background: '#2563eb',
+                background: t.colors.progressBar,
               }}
             />
           </div>

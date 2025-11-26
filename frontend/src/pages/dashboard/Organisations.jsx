@@ -57,7 +57,7 @@ const Organisations = () => {
               <img
                 src={addIcon}
                 alt="Add organisation"
-                style={{ width: 22, height: 22 }}
+                style={{ width: 16, height: 16 }}
               />
             }
             onClick={() => navigate(ROUTES.CREATE_ORGANISATION)}

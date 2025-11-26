@@ -1,8 +1,7 @@
-import React from 'react'
-import { DashboardLayout } from '.'
-import { PrimaryButton, SearchBar } from '../components'
-import { useTheme } from '../context/theme'
-import addIcon from '../assets/icons/addIcon.png'
+import React from "react";
+import { DashboardLayout } from ".";
+import { PrimaryButton, SearchBar } from "../components";
+import { useTheme } from "../context/theme";
 
 /**
  * Shared layout for organisation detail pages (Overview, Projects, Team, Reports, Settings)
@@ -11,20 +10,21 @@ import addIcon from '../assets/icons/addIcon.png'
 const OrganisationLayout = ({
   organisationName,
   primaryActionLabel,
+  primaryActionIcon,
   onPrimaryAction,
   searchPlaceholder,
   searchValue,
   onSearchChange,
   children,
 }) => {
-  const t = useTheme()
+  const t = useTheme();
 
   return (
     <DashboardLayout>
       <div
         style={{
           padding: t.spacing(6),
-          minHeight: '100vh',
+          minHeight: "100vh",
           backgroundColor: t.colors.backgroundColor,
         }}
       >
@@ -36,11 +36,11 @@ const OrganisationLayout = ({
         >
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
               gap: t.spacing(4),
-              flexWrap: 'wrap',
+              flexWrap: "wrap",
             }}
           >
             <h1
@@ -55,18 +55,9 @@ const OrganisationLayout = ({
               {organisationName}
             </h1>
             {primaryActionLabel && (
-              <PrimaryButton
-              icon={
-                <img
-                  src={addIcon}
-                  alt="Add organisation"
-                  style={{ width: 22, height: 22 }}
-                />
-              }
-              onClick={onPrimaryAction}
-            >
-              {primaryActionLabel}
-            </PrimaryButton>
+              <PrimaryButton icon={primaryActionIcon} onClick={onPrimaryAction}>
+                {primaryActionLabel}
+              </PrimaryButton>
             )}
           </div>
 
@@ -74,7 +65,7 @@ const OrganisationLayout = ({
             <div
               style={{
                 marginTop: t.spacing(4),
-                maxWidth: '720px',
+                maxWidth: "720px",
               }}
             >
               <SearchBar
@@ -90,10 +81,7 @@ const OrganisationLayout = ({
         <div style={{ marginTop: t.spacing(2) }}>{children}</div>
       </div>
     </DashboardLayout>
-  )
-}
+  );
+};
 
-export default OrganisationLayout
-
-
-
+export default OrganisationLayout;

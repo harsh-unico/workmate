@@ -10,6 +10,7 @@ export const theme = {
 
     // Cards
     cardBackground: 'rgba(250, 254, 255, 0.2)', // #FAFEFF at 20% opacity
+    popupBackground: 'rgba(250, 254, 255, 1)', // #FAFEFF at 20% opacity
     organisationCardBackground: 'rgba(250, 254, 255, 0.2)',
     cardBorder: '#FFFFFF',
 
@@ -35,7 +36,7 @@ export const theme = {
     buttonText: '#ffffff',
 
     // Links & status
-    link: '#60a5fa',
+    link: '#0088FF',
     linkHover: '#93c5fd',
     subtleText: '#9ca3af',
     error: '#f87171',

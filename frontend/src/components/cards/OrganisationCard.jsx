@@ -12,44 +12,20 @@ const OrganisationCard = ({ organisation }) => {
 
   return (
     <div
-      style={{
-        backgroundColor: t.colors.organisationCardBackground,
-        borderBlockColor: t.colors.cardBorder,
-        borderWidth: 0.2,
-        backdropFilter: 'blur(80px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(80px) saturate(180%)',
-        borderRadius: '12px',
-        border: `1px solid ${t.colors.cardBorder}`,
-        // boxShadow:
-        //   '0 8px 32px 0 rgba(208, 209, 226, 0.37), ' +
-        //   'inset 0 2px 4px rgba(255, 255, 255, 0.5), ' +
-        //   'inset 0 -2px 4px rgba(0, 0, 0, 0.1), ' +
-        //   'inset 2px 0 4px rgba(255, 255, 255, 0.3), ' +
-        //   'inset -2px 0 4px rgba(0, 0, 0, 0.05)',
-        overflow: 'hidden',
-        cursor: 'pointer',
-        width: '280px',
+    style={{
+      backgroundColor: t.colors.cardBackground,
+      borderRadius: '18px',
+      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.15)',
+      border: `1px solid ${t.colors.cardBorder}`,
         transition: 'transform 0.3s, box-shadow 0.3s, background-color 0.3s',
       }}
       onClick={() => navigate(`/organisations/${organisation.id}/overview`)}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'translateY(-4px)'
-        // e.currentTarget.style.boxShadow =
-        //   '0 12px 48px 0 rgba(31, 38, 135, 0.45), ' +
-        //   'inset 0 2px 6px rgba(255, 255, 255, 0.6), ' +
-        //   'inset 0 -2px 6px rgba(0, 0, 0, 0.12), ' +
-        //   'inset 2px 0 6px rgba(255, 255, 255, 0.4), ' +
-        //   'inset -2px 0 6px rgba(0, 0, 0, 0.08)'
         e.currentTarget.style.backgroundColor = 'rgba(170, 173, 174, 0.2)'
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'translateY(0)'
-        // e.currentTarget.style.boxShadow =
-        //   '0 8px 32px 0 rgba(31, 38, 135, 0.37), ' +
-        //   'inset 0 2px 4px rgba(255, 255, 255, 0.5), ' +
-        //   'inset 0 -2px 4px rgba(0, 0, 0, 0.1), ' +
-        //   'inset 2px 0 4px rgba(255, 255, 255, 0.3), ' +
-        //   'inset -2px 0 4px rgba(0, 0, 0, 0.05)'
         e.currentTarget.style.backgroundColor = t.colors.organisationCardBackground
       }}
     >
