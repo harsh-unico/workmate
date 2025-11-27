@@ -1,35 +1,117 @@
-import React, { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { OrganisationLayout } from '../../layouts'
-import { DashboardSectionCard } from '../../components'
-import { useTheme } from '../../context/theme'
+import React, { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { OrganisationLayout } from "../../layouts";
+import { TeamMemberCard } from "../../components";
+import { useTheme } from "../../context/theme";
+import RemoveMemberPopup from "./RemoveMemberPopup";
+
+const TEAM_MEMBERS = [
+  {
+    id: 1,
+    name: "Jane Doe",
+    role: "Project Manager",
+    activeProjects: 5,
+    status: "active",
+    avatarBg: "#22c55e",
+  },
+  {
+    id: 2,
+    name: "Sarah Johnson",
+    role: "Lead Developer",
+    activeProjects: 8,
+    status: "active",
+    avatarBg: "#f97316",
+  },
+  {
+    id: 3,
+    name: "David Lee",
+    role: "UI/UX Designer",
+    activeProjects: 3,
+    status: "pending",
+    avatarBg: "#3b82f6",
+  },
+  {
+    id: 4,
+    name: "Emily Ray",
+    role: "Marketing Specialist",
+    activeProjects: 2,
+    status: "inactive",
+    avatarBg: "#ef4444",
+  },
+];
 
 const OrganisationTeamMembers = () => {
-  const t = useTheme()
-  const { id } = useParams()
-  const [searchQuery, setSearchQuery] = useState('')
+  const t = useTheme();
+  // eslint-disable-next-line no-unused-vars
+  const { id } = useParams();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [members, setMembers] = useState(TEAM_MEMBERS);
+  const [memberToRemove, setMemberToRemove] = useState(null);
 
-  const organisationName = 'Quantum Solutions'
+  const organisationName = "Quantum Solutions";
+
+  const filteredMembers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return members;
+
+    return members.filter((member) => {
+      const haystack = `${member.name} ${member.role}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [searchQuery, members]);
+
+  const handleRequestRemove = (member) => {
+    setMemberToRemove(member);
+  };
+
+  const handleCancelRemove = () => {
+    setMemberToRemove(null);
+  };
+
+  const handleConfirmRemove = () => {
+    if (memberToRemove) {
+      setMembers((prev) => prev.filter((m) => m.id !== memberToRemove.id));
+    }
+    setMemberToRemove(null);
+  };
+
+  const renderMemberCard = (member) => {
+    return (
+      <TeamMemberCard
+        key={member.id}
+        member={member}
+        onRemove={() => handleRequestRemove(member)}
+      />
+    );
+  };
 
   return (
     <OrganisationLayout
       organisationName={organisationName}
-      primaryActionLabel="Add Team Member"
+      primaryActionLabel="+ Invite Member"
       onPrimaryAction={() => {}}
       searchPlaceholder="Search team members..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
     >
-      <DashboardSectionCard title="Team Members">
-        <p style={{ margin: 0, color: t.colors.textMutedDark, fontSize: t.font.size.md }}>
-          This section will show detailed team member information for {organisationName}. Replace this placeholder with
-          real data and components as the functionality is implemented.
-        </p>
-      </DashboardSectionCard>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: t.spacing(4),
+          alignItems: "stretch",
+        }}
+      >
+        {filteredMembers.map((member) => renderMemberCard(member))}
+      </div>
+      <RemoveMemberPopup
+        isOpen={!!memberToRemove}
+        onCancel={handleCancelRemove}
+        onConfirm={handleConfirmRemove}
+        memberName={memberToRemove?.name}
+      />
     </OrganisationLayout>
-  )
-}
+  );
+};
 
-export default OrganisationTeamMembers
-
-
+export default OrganisationTeamMembers;

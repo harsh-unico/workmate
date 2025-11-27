@@ -13,6 +13,7 @@ export const theme = {
     popupBackground: 'rgba(250, 254, 255, 1)', // #FAFEFF at 20% opacity
     organisationCardBackground: 'rgba(250, 254, 255, 0.2)',
     cardBorder: '#FFFFFF',
+    blackBorder: '#000000',
 
     // Text
     textPrimary: '#ffffff',

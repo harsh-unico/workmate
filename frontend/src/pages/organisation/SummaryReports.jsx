@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { OrganisationLayout } from '../../layouts'
-import { DashboardSectionCard } from '../../components'
+import { StatsCard } from '../../components'
 import { useTheme } from '../../context/theme'
 
 const OrganisationSummaryReports = () => {
@@ -10,6 +10,13 @@ const OrganisationSummaryReports = () => {
   const [searchQuery, setSearchQuery] = useState('')
 
   const organisationName = 'Quantum Solutions'
+
+  const stats = [
+    { label: 'Total Reports Generated', value: 48, delta: '+8.4%' },
+    { label: 'Reports Shared', value: 132, delta: '+3.2%' },
+    { label: 'Insights Identified', value: 320, delta: '+11.6%' },
+    { label: 'Exports This Month', value: 27, delta: '-1.8%' },
+  ]
 
   return (
     <OrganisationLayout
@@ -20,16 +27,19 @@ const OrganisationSummaryReports = () => {
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
     >
-      <DashboardSectionCard title="Summary & Reports">
-        <p style={{ margin: 0, color: t.colors.textMutedDark, fontSize: t.font.size.md }}>
-          This section will contain analytics, KPIs, and exportable reports for {organisationName}. Replace this
-          placeholder with charts, tables, and filters as reporting features are implemented.
-        </p>
-      </DashboardSectionCard>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+          gap: t.spacing(4),
+        }}
+      >
+        {stats.map((stat) => (
+          <StatsCard key={stat.label} label={stat.label} value={stat.value} delta={stat.delta} />
+        ))}
+      </div>
     </OrganisationLayout>
   )
 }
 
 export default OrganisationSummaryReports
-
-
