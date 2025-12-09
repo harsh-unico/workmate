@@ -14,6 +14,10 @@ export const theme = {
     organisationCardBackground: 'rgba(250, 254, 255, 0.2)',
     cardBorder: '#FFFFFF',
     blackBorder: '#000000',
+    dangerBorder: '#D40000',
+
+    // Task sections
+    taskSectionBackground: 'rgba(70, 81, 87, 0.1)', // #465157 at 10%
 
     // Text
     textPrimary: '#ffffff',

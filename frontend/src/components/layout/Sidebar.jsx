@@ -20,30 +20,110 @@ const Sidebar = () => {
   const location = useLocation()
   const { logout } = useAuth()
 
-  const isOrganisationDetail = location.pathname.startsWith('/organisations/') && location.pathname.split('/').length >= 4
+  const segments = location.pathname.split('/').filter(Boolean)
+
+  const isProjectDetail =
+    segments[0] === 'organisations' && segments[2] === 'projects' && segments.length >= 5
+
+  const isOrganisationDetail =
+    segments[0] === 'organisations' && !isProjectDetail && segments.length >= 3
 
   let menuItems
 
-  if (isOrganisationDetail) {
-    const parts = location.pathname.split('/')
-    const orgId = parts[2]
+  if (isProjectDetail) {
+    const orgId = segments[1]
+    const projectId = segments[3]
+    const projectPath = (section) =>
+      `/organisations/${orgId}/projects/${projectId}/${section}`
 
+    menuItems = [
+      {
+        id: 'overview',
+        label: 'Overview',
+        icon: dashboardIcon,
+        path: projectPath('overview'),
+      },
+      {
+        id: 'tasks',
+        label: 'Tasks',
+        icon: projectIcon,
+        path: projectPath('tasks'),
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        icon: settingsIcon,
+        path: projectPath('settings'),
+      },
+    ]
+  } else if (isOrganisationDetail) {
+    const orgId = segments[1]
     const orgPath = (section) => `/organisations/${orgId}/${section}`
 
     menuItems = [
-      { id: 'overview', label: 'Overview', icon: dashboardIcon, path: orgPath('overview') },
-      { id: 'projects', label: 'Projects', icon: projectIcon, path: orgPath('projects') },
-      { id: 'team', label: 'Team Members', icon: teamIcon, path: orgPath('team') },
-      { id: 'reports', label: 'Summary & Reports', icon: summaryIcon, path: orgPath('reports') },
-      { id: 'settings', label: 'Settings', icon: settingsIcon, path: orgPath('settings') },
+      {
+        id: 'overview',
+        label: 'Overview',
+        icon: dashboardIcon,
+        path: orgPath('overview'),
+      },
+      {
+        id: 'projects',
+        label: 'Projects',
+        icon: projectIcon,
+        path: orgPath('projects'),
+      },
+      {
+        id: 'team',
+        label: 'Team Members',
+        icon: teamIcon,
+        path: orgPath('team'),
+      },
+      {
+        id: 'reports',
+        label: 'Summary & Reports',
+        icon: summaryIcon,
+        path: orgPath('reports'),
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        icon: settingsIcon,
+        path: orgPath('settings'),
+      },
     ]
   } else {
     menuItems = [
-      { id: 'dashboard', label: 'Dashboard', icon: dashboardIcon, path: ROUTES.DASHBOARD },
-      { id: 'organisations', label: 'Organisations', icon: orgsIcon, path: ROUTES.ORGANISATIONS },
-      { id: 'notifications', label: 'Notifications', icon: notificationsIcon, path: ROUTES.NOTIFICATIONS },
-      { id: 'profile', label: 'Profile', icon: profileIcon, path: ROUTES.PROFILE },
-      { id: 'settings', label: 'Settings', icon: settingsIcon, path: ROUTES.SETTINGS },
+      {
+        id: 'dashboard',
+        label: 'Dashboard',
+        icon: dashboardIcon,
+        path: ROUTES.DASHBOARD,
+      },
+      {
+        id: 'organisations',
+        label: 'Organisations',
+        icon: orgsIcon,
+        path: ROUTES.ORGANISATIONS,
+      },
+      {
+        id: 'notifications',
+        label: 'Notifications',
+        icon: notificationsIcon,
+        path: ROUTES.NOTIFICATIONS,
+      },
+      {
+        id: 'profile',
+        label: 'Profile',
+        icon: profileIcon,
+        path: ROUTES.PROFILE,
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        icon: settingsIcon,
+        path: ROUTES.SETTINGS,
+      },
     ]
   }
 
@@ -53,12 +133,14 @@ const Sidebar = () => {
   }
 
   const isActive = (path) => {
-    if (!isOrganisationDetail && path === ROUTES.DASHBOARD) {
+    if (!isOrganisationDetail && !isProjectDetail && path === ROUTES.DASHBOARD) {
       return location.pathname === ROUTES.DASHBOARD
     }
-    if (isOrganisationDetail) {
+
+    if (isOrganisationDetail || isProjectDetail) {
       return location.pathname === path
     }
+
     return location.pathname.startsWith(path)
   }
 

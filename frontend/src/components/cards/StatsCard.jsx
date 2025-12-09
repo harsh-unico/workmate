@@ -1,9 +1,10 @@
 import React from 'react'
 import { useTheme } from '../../context/theme'
 
-const StatsCard = ({ label, value, delta }) => {
+const StatsCard = ({ label, value, delta, progress }) => {
   const t = useTheme()
   const isNegative = typeof delta === 'string' && delta.trim().startsWith('-')
+  const hasProgress = typeof progress === 'number'
 
   return (
     <div
@@ -42,6 +43,31 @@ const StatsCard = ({ label, value, delta }) => {
           }}
         >
           {delta}
+        </div>
+      )}
+      {hasProgress && (
+        <div
+          style={{
+            marginTop: t.spacing(3),
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: '6px',
+              borderRadius: '999px',
+              backgroundColor: t.colors.progressTrack,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                width: `${Math.max(0, Math.min(100, progress))}%`,
+                height: '100%',
+                backgroundColor: t.colors.progressBar,
+              }}
+            />
+          </div>
         </div>
       )}
     </div>

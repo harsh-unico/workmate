@@ -107,3 +107,5 @@ const RemoveMemberPopup = ({ isOpen, onCancel, onConfirm, memberName }) => {
 };
 
 export default RemoveMemberPopup;
+
+

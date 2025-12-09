@@ -1,18 +1,38 @@
 import React from 'react'
 import { useTheme } from '../../context/theme'
 
-const ProjectCard = ({ project }) => {
+const ProjectCard = ({ project, onClick }) => {
   const t = useTheme()
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick()
+    }
+  }
 
   return (
     <div
-    style={{
-      backgroundColor: t.colors.cardBackground,
-      borderRadius: '18px',
-      padding: t.spacing(4),
-      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.15)',
-      border: `1px solid ${t.colors.cardBorder}`,
-    }}
+      onClick={handleClick}
+      style={{
+        backgroundColor: t.colors.cardBackground,
+        borderRadius: '18px',
+        padding: t.spacing(4),
+        boxShadow: '0 18px 40px rgba(15, 23, 42, 0.15)',
+        border: `1px solid ${t.colors.cardBorder}`,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+      }}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.boxShadow = '0 22px 50px rgba(15, 23, 42, 0.25)'
+        }
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'none'
+        e.currentTarget.style.boxShadow =
+          '0 18px 40px rgba(15, 23, 42, 0.15)'
+      }}
     >
       {/* Title & Due date */}
       <div

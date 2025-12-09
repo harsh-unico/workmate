@@ -102,7 +102,6 @@ const RichTextEditor = ({
       if (containerElement) {
         containerElement.style.borderColor = t.colors.blackBorder;
         containerElement.style.borderRadius = "0px 0px 10px 10px";
-
       }
     };
 

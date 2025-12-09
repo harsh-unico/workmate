@@ -1,34 +1,65 @@
-import React, { useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { OrganisationLayout } from '../../layouts'
-import { ProjectCard } from '../../components'
-import { useTheme } from '../../context/theme'
+import React, { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { OrganisationLayout } from "../../layouts";
+import { ProjectCard } from "../../components";
+import { useTheme } from "../../context/theme";
 
 const OrganisationProjects = () => {
-  const t = useTheme()
-  const { id } = useParams()
-  const [searchQuery, setSearchQuery] = useState('')
+  const t = useTheme();
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Temporary mock data – replace with API data later, ideally fetched using `id`
-  const organisationName = 'Quantum Solutions'
+  const organisationName = "Quantum Solutions";
 
   const projects = [
-    { name: 'Website Redesign', due: 'Nov 30, 2025', progress: 70, members: 5 },
-    { name: 'API Integration', due: 'Dec 05, 2025', progress: 45, members: 4 },
-    { name: 'Mobile App Development', due: 'Dec 22, 2025', progress: 30, members: 8 },
-    { name: 'Model Training', due: 'Jan 15, 2026', progress: 22, members: 3 },
-    { name: 'Market Research', due: 'Jan 31, 2026', progress: 10, members: 5 },
-  ]
+    {
+      id: "project-alpha",
+      name: "Project Alpha",
+      due: "Nov 30, 2025",
+      progress: 70,
+      members: 5,
+    },
+    {
+      id: "api-integration",
+      name: "API Integration",
+      due: "Dec 05, 2025",
+      progress: 45,
+      members: 4,
+    },
+    {
+      id: "mobile-app-development",
+      name: "Mobile App Development",
+      due: "Dec 22, 2025",
+      progress: 30,
+      members: 8,
+    },
+    {
+      id: "model-training",
+      name: "Model Training",
+      due: "Jan 15, 2026",
+      progress: 22,
+      members: 3,
+    },
+    {
+      id: "market-research",
+      name: "Market Research",
+      due: "Jan 31, 2026",
+      progress: 10,
+      members: 5,
+    },
+  ];
 
   const filteredProjects = projects.filter((project) =>
     project.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
-  )
+  );
 
   return (
     <OrganisationLayout
       organisationName={organisationName}
       primaryActionLabel="Create Project"
-      onPrimaryAction={() => {}}
+      onPrimaryAction={() => navigate(`/organisations/${id}/projects/create`)}
       searchPlaceholder="Search project, tasks, or members..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
@@ -36,28 +67,40 @@ const OrganisationProjects = () => {
       <div style={{ marginTop: t.spacing(2) }}>
         <div
           style={{
-            display: 'flex',
-            flexDirection: 'column',
+            display: "flex",
+            flexDirection: "column",
             gap: t.spacing(4),
           }}
         >
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
               gap: t.spacing(4),
             }}
           >
             {filteredProjects.map((project) => (
-              <ProjectCard key={project.name} project={project} />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onClick={() =>
+                  navigate(
+                    `/organisations/${id}/projects/${project.id}/overview`,
+                    {
+                      state: {
+                        projectName: project.name,
+                        overallProgress: project.progress,
+                      },
+                    }
+                  )
+                }
+              />
             ))}
           </div>
         </div>
       </div>
     </OrganisationLayout>
-  )
-}
+  );
+};
 
-export default OrganisationProjects
-
-
+export default OrganisationProjects;
