@@ -7,6 +7,7 @@ import {
   ProjectForm,
 } from "../../components";
 import { useTheme } from "../../context/theme";
+import addIcon from "../../assets/icons/addIcon.png";
 
 const initialFormData = {
   projectName: "",
@@ -80,7 +81,17 @@ const CreateProject = () => {
             >
               Cancel
             </button>
-            <PrimaryButton type="submit" fullWidth={false}>
+            <PrimaryButton
+              type="submit"
+              fullWidth={false}
+              icon={
+                <img
+                  src={addIcon}
+                  alt="Create project"
+                  style={{ width: 18, height: 18 }}
+                />
+              }
+            >
               Create Project
             </PrimaryButton>
           </div>

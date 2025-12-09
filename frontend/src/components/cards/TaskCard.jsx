@@ -11,6 +11,7 @@ const TaskCard = ({
   dueDate,
   assigneeInitials,
   avatarColor,
+  onClick,
 }) => {
   const t = useTheme()
 
@@ -39,6 +40,16 @@ const TaskCard = ({
 
   return (
     <div
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (!onClick) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onClick()
+        }
+      }}
       style={{
         backgroundColor: t.colors.cardBackground,
         borderRadius: '18px',
@@ -48,6 +59,7 @@ const TaskCard = ({
         display: 'flex',
         flexDirection: 'column',
         gap: t.spacing(1.5),
+        cursor: onClick ? 'pointer' : 'default',
       }}
     >
       <div

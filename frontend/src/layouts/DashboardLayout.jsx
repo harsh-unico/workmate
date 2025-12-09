@@ -6,7 +6,7 @@ import { useTheme } from '../context/theme'
  * Dashboard Layout Component
  * Layout wrapper for dashboard pages with sidebar
  */
-const DashboardLayout = ({ children }) => {
+const DashboardLayout = ({ children, showSidebar = true }) => {
   const t = useTheme()
 
   return (
@@ -18,7 +18,7 @@ const DashboardLayout = ({ children }) => {
         fontFamily: t.font.family,
       }}
     >
-      <Sidebar />
+      {showSidebar && <Sidebar />}
       <div
         style={{
           flex: 1,

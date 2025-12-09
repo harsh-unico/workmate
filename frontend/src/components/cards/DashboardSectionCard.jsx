@@ -39,6 +39,7 @@ const DashboardSectionCard = ({
         padding: t.spacing(4),
         boxShadow: "0 18px 40px rgba(15, 23, 42, 0.15)",
         border: `1px solid ${t.colors.cardBorder}`,
+        height: "100%",
       }}
     >
       {hasHeader && (

@@ -21,6 +21,8 @@ import ProjectTasks from "./pages/project/Tasks";
 import ProjectNotifications from "./pages/project/Notifications";
 import ProjectSettings from "./pages/project/Settings";
 import CreateTask from "./pages/project/CreateTask";
+import EditTask from "./pages/project/EditTask";
+import TaskDetails from "./pages/project/TaskDetails";
 import { ROUTES } from "./utils/constants";
 
 function App() {
@@ -62,8 +64,16 @@ function App() {
           element={<ProjectTasks />}
         />
         <Route
+          path="/organisations/:id/projects/:projectId/tasks/:taskId"
+          element={<TaskDetails />}
+        />
+        <Route
           path="/organisations/:id/projects/:projectId/tasks/create"
           element={<CreateTask />}
+        />
+        <Route
+          path="/organisations/:id/projects/:projectId/tasks/:taskId/edit"
+          element={<EditTask />}
         />
         <Route
           path="/organisations/:id/projects/:projectId/notifications"

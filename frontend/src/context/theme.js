@@ -62,14 +62,14 @@ export const theme = {
       sm: '14px',
       md: '16px',
       lg: '18px',
-      xl: '24px',
-      display: '32px',
+      xl: '20px',
+      display: '24px',
     },
     weight: {
       regular: 400,
       medium: 500,
       semiBold: 600,
-      bold: 700,
+      bold: 500,
     },
   },
   shadow: {

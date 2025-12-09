@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { StatsCard, DashboardSectionCard } from "../../components";
 import { useTheme } from "../../context/theme";
@@ -7,8 +7,8 @@ import addIcon from "../../assets/icons/addIcon.png";
 
 const ProjectOverview = () => {
   const t = useTheme();
-  // eslint-disable-next-line no-unused-vars
   const { id, projectId } = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -99,7 +99,11 @@ const ProjectOverview = () => {
           style={{ width: 16, height: 16 }}
         />
       }
-      onPrimaryAction={() => {}}
+      onPrimaryAction={() =>
+        navigate(`/organisations/${id}/projects/${projectId}/tasks/create`, {
+          state: { projectName },
+        })
+      }
       searchPlaceholder="Search tasks..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}

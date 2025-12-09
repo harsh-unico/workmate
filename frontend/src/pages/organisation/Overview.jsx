@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { StatsCard, DashboardSectionCard } from "../../components";
 import { useTheme } from "../../context/theme";
@@ -9,6 +9,7 @@ import AboutOrganisationPopup from "./AboutOrganisationPopup";
 const OrganisationOverview = () => {
   const t = useTheme();
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAboutPopupOpen, setIsAboutPopupOpen] = useState(false);
 
@@ -240,7 +241,7 @@ const OrganisationOverview = () => {
           style={{ width: 16, height: 16 }}
         />
       }
-      onPrimaryAction={() => {}}
+      onPrimaryAction={() => navigate(`/organisations/${id}/projects/create`)}
       searchPlaceholder="Search project, tasks, or members..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}

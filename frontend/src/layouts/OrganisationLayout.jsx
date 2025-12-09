@@ -9,6 +9,8 @@ import { useTheme } from "../context/theme";
  */
 const OrganisationLayout = ({
   organisationName,
+  pageTitle,
+  showSidebar = true,
   primaryActionLabel,
   primaryActionIcon,
   onPrimaryAction,
@@ -20,7 +22,7 @@ const OrganisationLayout = ({
   const t = useTheme();
 
   return (
-    <DashboardLayout>
+    <DashboardLayout showSidebar={showSidebar}>
       <div
         style={{
           padding: t.spacing(6),
@@ -43,17 +45,47 @@ const OrganisationLayout = ({
               flexWrap: "wrap",
             }}
           >
-            <h1
-              style={{
-                margin: 0,
-                fontSize: t.font.size.display,
-                fontWeight: t.font.weight.bold,
-                color: t.colors.textHeadingDark,
-                fontFamily: t.font.heading,
-              }}
-            >
-              {organisationName}
-            </h1>
+            <div>
+              {pageTitle ? (
+                <>
+                  <div
+                    style={{
+                      margin: 0,
+                      fontSize: t.font.size.sm,
+                      fontWeight: t.font.weight.medium,
+                      color: t.colors.textMutedDark,
+                      fontFamily: t.font.family,
+                    }}
+                  >
+                    {organisationName}
+                  </div>
+                  <h1
+                    style={{
+                      margin: 0,
+                      marginTop: t.spacing(1),
+                      fontSize: t.font.size.display,
+                      fontWeight: t.font.weight.bold,
+                      color: t.colors.textHeadingDark,
+                      fontFamily: t.font.heading,
+                    }}
+                  >
+                    {pageTitle}
+                  </h1>
+                </>
+              ) : (
+                <h1
+                  style={{
+                    margin: 0,
+                    fontSize: t.font.size.display,
+                    fontWeight: t.font.weight.bold,
+                    color: t.colors.textHeadingDark,
+                    fontFamily: t.font.heading,
+                  }}
+                >
+                  {organisationName}
+                </h1>
+              )}
+            </div>
             {primaryActionLabel && (
               <PrimaryButton icon={primaryActionIcon} onClick={onPrimaryAction}>
                 {primaryActionLabel}

@@ -3,9 +3,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { DashboardSectionCard, PrimaryButton, TaskForm } from "../../components";
 import { useTheme } from "../../context/theme";
-import addIcon from "../../assets/icons/addIcon.png";
 
-const initialFormData = {
+const baseInitialFormData = {
   taskName: "",
   description: "",
   assigneeSearch: "",
@@ -17,15 +16,16 @@ const initialFormData = {
   attachments: [],
 };
 
-const CreateTask = () => {
+const EditTask = () => {
   const t = useTheme();
-  const { id, projectId } = useParams();
+  const { id, projectId, taskId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [formData, setFormData] = useState(initialFormData);
 
   const organisationName = "Quantum Solutions";
   const projectNameFromState = location.state?.projectName;
+  const taskFromState = location.state?.task || {};
+
   const derivedProjectName =
     projectId && typeof projectId === "string"
       ? projectId
@@ -35,7 +35,20 @@ const CreateTask = () => {
       : "Project Alpha";
 
   const projectName = projectNameFromState || derivedProjectName;
-  const headerTitle = "Create New Task";
+
+  const initialFormData = {
+    ...baseInitialFormData,
+    taskName: taskFromState.title || baseInitialFormData.taskName,
+    description: taskFromState.description || baseInitialFormData.description,
+    dueDate: taskFromState.dueDate || baseInitialFormData.dueDate,
+    priority: taskFromState.priority || baseInitialFormData.priority,
+    status: taskFromState.status || baseInitialFormData.status,
+    attachments: taskFromState.attachments || baseInitialFormData.attachments,
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
+
+  const headerBreadcrumb = `Edit Task`;
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({
@@ -48,20 +61,20 @@ const CreateTask = () => {
     if (event) {
       event.preventDefault();
     }
-    // TODO: Replace with API call to create a task for this project.
+    // TODO: Replace with API call to update a task for this project.
     // eslint-disable-next-line no-console
-    console.log("Create task for project:", projectName, formData);
+    console.log("Update task", taskId, "for project:", projectName, formData);
   };
 
   const handleCancel = () => {
-    navigate(`/organisations/${id}/projects/${projectId}/tasks`);
+    navigate(`/organisations/${id}/projects/${projectId}/tasks/${taskId}`, {
+      state: { projectName, task: taskFromState },
+    });
   };
 
   return (
     <OrganisationLayout
-      organisationName={headerTitle}
-      primaryActionLabel="Create Task"
-      onPrimaryAction={handleSubmit}
+      organisationName={headerBreadcrumb}
       searchPlaceholder=""
       searchValue=""
       onSearchChange={undefined}
@@ -74,7 +87,7 @@ const CreateTask = () => {
           fontSize: t.font.size.sm,
         }}
       >
-        Log a task to organize and prioritize work for{" "}
+        Update details for{" "}
         <strong>{organisationName}</strong> / <strong>{projectName}</strong>.
       </p>
 
@@ -107,18 +120,8 @@ const CreateTask = () => {
             >
               Cancel
             </button>
-            <PrimaryButton
-              type="submit"
-              fullWidth={false}
-              icon={
-                <img
-                  src={addIcon}
-                  alt="Create task"
-                  style={{ width: 18, height: 18 }}
-                />
-              }
-            >
-              Create Task
+            <PrimaryButton type="submit" fullWidth={false}>
+              Save Changes
             </PrimaryButton>
           </div>
         </form>
@@ -127,6 +130,6 @@ const CreateTask = () => {
   );
 };
 
-export default CreateTask;
+export default EditTask;
 
 

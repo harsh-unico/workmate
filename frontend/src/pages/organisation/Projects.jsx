@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { ProjectCard } from "../../components";
 import { useTheme } from "../../context/theme";
+import addIcon from "../../assets/icons/addIcon.png";
 
 const OrganisationProjects = () => {
   const t = useTheme();
@@ -59,6 +60,13 @@ const OrganisationProjects = () => {
     <OrganisationLayout
       organisationName={organisationName}
       primaryActionLabel="Create Project"
+      primaryActionIcon={
+        <img
+          src={addIcon}
+          alt="Create project"
+          style={{ width: 16, height: 16 }}
+        />
+      }
       onPrimaryAction={() => navigate(`/organisations/${id}/projects/create`)}
       searchPlaceholder="Search project, tasks, or members..."
       searchValue={searchQuery}

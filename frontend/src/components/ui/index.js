@@ -3,4 +3,8 @@ export { default as FieldError } from './FieldError'
 export { default as Popup } from './Popup'
 export { default as CopyableRow } from './CopyableRow'
 export { default as DangerZoneSection } from './DangerZoneSection'
+export { default as AttachmentList } from './AttachmentList'
+export { default as PriorityFilterDropdown } from './PriorityFilterDropdown'
+export { default as AssigneeFilterDropdown } from './AssigneeFilterDropdown'
+export { default as SortFilterDropdown } from './SortFilterDropdown'
 

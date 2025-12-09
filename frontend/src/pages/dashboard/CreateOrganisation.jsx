@@ -8,6 +8,7 @@ import {
 } from "../../components";
 import { useTheme } from "../../context/theme";
 import { ROUTES } from "../../utils/constants";
+import addIcon from "../../assets/icons/addIcon.png";
 
 const CreateOrganisation = () => {
   const t = useTheme();
@@ -121,7 +122,17 @@ const CreateOrganisation = () => {
                 >
                   Cancel
                 </button>
-                <PrimaryButton type="submit" fullWidth={false}>
+                <PrimaryButton
+                  type="submit"
+                  fullWidth={false}
+                  icon={
+                    <img
+                      src={addIcon}
+                      alt="Create organisation"
+                      style={{ width: 18, height: 18 }}
+                    />
+                  }
+                >
                   Create Organisation
                 </PrimaryButton>
               </div>

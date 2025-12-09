@@ -1,8 +1,14 @@
 import React, { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
-import { TaskCard } from "../../components";
+import {
+  TaskCard,
+  PriorityFilterDropdown,
+  AssigneeFilterDropdown,
+  SortFilterDropdown,
+} from "../../components";
 import { useTheme } from "../../context/theme";
+import addIcon from "../../assets/icons/addIcon.png";
 
 const TASK_COLUMNS = [
   {
@@ -94,6 +100,10 @@ const ProjectTasks = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState(["High", "Medium", "Low"]);
+  const [assigneeSearch, setAssigneeSearch] = useState("");
+  const [assigneeFilter, setAssigneeFilter] = useState([]);
+  const [sortOption, setSortOption] = useState("due-desc");
 
   const organisationName = "Quantum Solutions";
   const projectNameFromState = location.state?.projectName;
@@ -110,15 +120,47 @@ const ProjectTasks = () => {
 
   const filteredColumns = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return TASK_COLUMNS;
+    const activePriorities =
+      priorityFilter && priorityFilter.length ? priorityFilter : ["High", "Medium", "Low"];
 
-    return TASK_COLUMNS.map((column) => ({
-      ...column,
-      tasks: column.tasks.filter((task) =>
-        `${task.title} ${task.priority}`.toLowerCase().includes(query)
-      ),
-    }));
-  }, [searchQuery]);
+    const sortByDueDate = (a, b) => {
+      const aDate = new Date(a.due);
+      const bDate = new Date(b.due);
+      if (Number.isNaN(aDate) || Number.isNaN(bDate)) return 0;
+      return sortOption === "due-asc" ? aDate - bDate : bDate - aDate;
+    };
+
+    return TASK_COLUMNS.map((column) => {
+      let tasks = column.tasks.slice();
+
+      if (query) {
+        tasks = tasks.filter((task) =>
+          `${task.title} ${task.priority}`.toLowerCase().includes(query)
+        );
+      }
+
+      tasks = tasks.filter((task) => activePriorities.includes(task.priority));
+
+      tasks.sort(sortByDueDate);
+
+      return {
+        ...column,
+        tasks,
+      };
+    });
+  }, [searchQuery, priorityFilter, sortOption]);
+
+  const handleTaskClick = (task) => {
+    navigate(
+      `/organisations/${id}/projects/${projectId}/tasks/${task.id}`,
+      {
+        state: {
+          projectName,
+          task,
+        },
+      }
+    );
+  };
 
   const getPriorityStyles = (priority) => {
     switch (priority) {
@@ -150,39 +192,30 @@ const ProjectTasks = () => {
         dueDate={task.due}
         assigneeInitials={task.assigneeInitials}
         avatarColor={task.avatarColor}
+        onClick={() => handleTaskClick(task)}
       />
     );
   };
 
-  const renderFilterButton = (label) => (
-    <button
-      key={label}
-      type="button"
-      style={{
-        padding: `${t.spacing(1.5)} ${t.spacing(3)}`,
-        borderRadius: "10px",
-        border: `1px solid ${t.colors.cardBorder}`,
-        backgroundColor: t.colors.cardBackground,
-        boxShadow: "0 18px 40px rgba(15, 23, 42, 0.15)",
-        fontSize: t.font.size.sm,
-        fontFamily: t.font.family,
-        color: t.colors.textBodyDark,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: t.spacing(1),
-        cursor: "pointer",
-      }}
-    >
-      <span>{label}</span>
-      {label !== "Sort" && <span style={{ fontSize: 10 }}>▾</span>}
-      {label === "Sort" && <span style={{ fontSize: 12 }}>⇅</span>}
-    </button>
-  );
+  const handleClearFilters = () => {
+    setPriorityFilter(["High", "Medium", "Low"]);
+    setAssigneeSearch("");
+    setAssigneeFilter([]);
+    setSortOption("due-desc");
+    setSearchQuery("");
+  };
 
   return (
     <OrganisationLayout
       organisationName={headerTitle}
       primaryActionLabel="Create Task"
+      primaryActionIcon={
+        <img
+          src={addIcon}
+          alt="Create task"
+          style={{ width: 16, height: 16 }}
+        />
+      }
       onPrimaryAction={() =>
         navigate(`/organisations/${id}/projects/${projectId}/tasks/create`, {
           state: { projectName },
@@ -196,15 +229,43 @@ const ProjectTasks = () => {
       <div
         style={{
           display: "flex",
-          gap: t.spacing(2),
+          gap: t.spacing(3),
           marginTop: t.spacing(3),
           marginBottom: t.spacing(4),
           flexWrap: "wrap",
+          alignItems: "flex-start",
         }}
       >
-        {["Priority", "Assignee", "Sort"].map((label) =>
-          renderFilterButton(label)
-        )}
+        <PriorityFilterDropdown
+          selected={priorityFilter}
+          onChange={setPriorityFilter}
+        />
+        <AssigneeFilterDropdown
+          search={assigneeSearch}
+          selected={assigneeFilter}
+          onSearchChange={setAssigneeSearch}
+          onSelectedChange={setAssigneeFilter}
+        />
+        <SortFilterDropdown value={sortOption} onChange={setSortOption} />
+
+        <button
+          type="button"
+          onClick={handleClearFilters}
+          style={{
+            marginLeft: "auto",
+            padding: `${t.spacing(1.5)} ${t.spacing(3)}`,
+            borderRadius: "999px",
+            border: "none",
+            backgroundColor: "transparent",
+            color: t.colors.link,
+            fontSize: t.font.size.sm,
+            fontWeight: t.font.weight.medium,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          Clear all
+        </button>
       </div>
 
       {/* Kanban columns */}
