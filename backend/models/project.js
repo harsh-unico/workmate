@@ -1,7 +1,6 @@
 'use strict';
 
 const { z } = require('zod');
-const { projectStatusValues, projectPriorityValues } = require('../enums');
 
 const TABLE = 'projects';
 const COLUMNS = Object.freeze({
@@ -10,41 +9,35 @@ const COLUMNS = Object.freeze({
   orgId: 'org_id',
   name: 'name',
   description: 'description',
+  status: 'status',
   startDate: 'start_date',
   endDate: 'end_date',
-  status: 'status',
-  teamLeadId: 'team_lead_id',
-  priority: 'priority',
-  projectManagerId: 'project_manager_id',
-  team: 'team'
+  createdBy: 'created_by',
+  updatedAt: 'updated_at'
 });
 
 const RowSchema = z.object({
-  id: z.number(),
-  created_at: z.string(),
-  org_id: z.number(),
+  id: z.string(),
+  created_at: z.string().optional(),
+  org_id: z.string().nullable().optional(),
   name: z.string(),
   description: z.string().nullable().optional(),
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
-  status: z.enum(projectStatusValues).nullable().optional(),
-  team_lead_id: z.number().nullable().optional(),
-  priority: z.enum(projectPriorityValues).nullable().optional(),
-  project_manager_id: z.number().nullable().optional(),
-  team: z.array(z.number()).nullable().optional()
+  status: z.string().nullable().optional(),
+  created_by: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional()
 });
 
 const InsertSchema = z.object({
-  org_id: z.number(),
+  org_id: z.string().nullable().optional(),
   name: z.string(),
   description: z.string().nullable().optional(),
   start_date: z.string().nullable().optional(),
   end_date: z.string().nullable().optional(),
-  status: z.enum(projectStatusValues).nullable().optional(),
-  team_lead_id: z.number().nullable().optional(),
-  priority: z.enum(projectPriorityValues).nullable().optional(),
-  project_manager_id: z.number().nullable().optional(),
-  team: z.array(z.number()).nullable().optional()
+  status: z.string().nullable().optional(),
+  created_by: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional()
 });
 
 const UpdateSchema = InsertSchema.partial();
@@ -56,10 +49,8 @@ const MUTABLE_FIELDS = [
   'start_date',
   'end_date',
   'status',
-  'team_lead_id',
-  'priority',
-  'project_manager_id',
-  'team'
+  'created_by',
+  'updated_at'
 ];
 
 function parseInsert(input) {

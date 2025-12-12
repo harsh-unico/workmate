@@ -1,65 +1,47 @@
 'use strict';
 
 const { z } = require('zod');
-const { userStatusValues } = require('../enums');
 
 const TABLE = 'users';
 const COLUMNS = Object.freeze({
   id: 'id',
   createdAt: 'created_at',
-  name: 'name',
   email: 'email',
+  name: 'name',
   passwordHash: 'password_hash',
-  role: 'role',
-  department: 'department',
   profileImageUrl: 'profile_image_url',
   status: 'status',
-  isAdmin: 'is_admin',
-  updatedAt: 'updated_at',
-  orgId: 'org_id'
+  updatedAt: 'updated_at'
 });
 
 const RowSchema = z.object({
-  id: z.number(),
-  created_at: z.string(),
-  name: z.string(),
+  id: z.string(), // uuid
+  created_at: z.string().optional(),
   email: z.string().email(),
+  name: z.string().nullable().optional(),
   password_hash: z.string().nullable().optional(),
-  role: z.string().nullable().optional(),
-  department: z.string().nullable().optional(),
-  profile_image_url: z.string().url().nullable().optional(),
-  status: z.enum(userStatusValues).nullable().optional(),
-  is_admin: z.boolean().default(false),
-  updated_at: z.string().nullable().optional(),
-  org_id: z.array(z.number()).nullable().optional()
+  profile_image_url: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional()
 });
 
 const InsertSchema = z.object({
-  name: z.string(),
   email: z.string().email(),
+  name: z.string().nullable().optional(),
   password_hash: z.string().nullable().optional(),
-  role: z.string().nullable().optional(),
-  department: z.string().nullable().optional(),
-  profile_image_url: z.string().url().nullable().optional(),
-  status: z.enum(userStatusValues).nullable().optional(),
-  is_admin: z.boolean().optional(),
-  org_id: z.array(z.number()).nullable().optional(),
+  profile_image_url: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
   updated_at: z.string().nullable().optional()
 });
 
 const UpdateSchema = InsertSchema.partial();
 
-// For repository compatibility
 const MUTABLE_FIELDS = [
-  'name',
   'email',
+  'name',
   'password_hash',
-  'role',
-  'department',
   'profile_image_url',
   'status',
-  'is_admin',
-  'org_id',
   'updated_at'
 ];
 
@@ -81,5 +63,4 @@ module.exports = {
   parseUpdate,
   MUTABLE_FIELDS
 };
-
 

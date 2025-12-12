@@ -1,37 +1,69 @@
 'use strict';
 
 const { z } = require('zod');
-const { orgSizeValues } = require('../enums');
 
-// Table and columns
-const TABLE = 'orgs';
+const TABLE = 'organisations';
 const COLUMNS = Object.freeze({
   id: 'id',
   createdAt: 'created_at',
-  ownerId: 'owner_id',
-  description: 'description',
-  size: 'size'
+  updatedAt: 'updated_at',
+  orgName: 'org_name',
+  email: 'email',
+  phone: 'phone',
+  addressLine1: 'address_line_1',
+  addressLine2: 'address_line_2',
+  country: 'country',
+  state: 'state',
+  city: 'city',
+  postalCode: 'postal_code',
+  about: 'about'
 });
 
-// Row and mutation schemas
 const RowSchema = z.object({
-  id: z.number(),
-  created_at: z.string(),
-  owner_id: z.number(),
-  description: z.string().nullable().optional(),
-  size: z.enum(orgSizeValues).nullable().optional()
+  id: z.string(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
+  org_name: z.string(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  address_line_1: z.string().nullable().optional(),
+  address_line_2: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  postal_code: z.string().nullable().optional(),
+  about: z.string().nullable().optional()
 });
 
 const InsertSchema = z.object({
-  owner_id: z.number(),
-  description: z.string().nullable().optional(),
-  size: z.enum(orgSizeValues).nullable().optional()
+  org_name: z.string(),
+  email: z.string().email().nullable().optional(),
+  phone: z.string().nullable().optional(),
+  address_line_1: z.string().nullable().optional(),
+  address_line_2: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  state: z.string().nullable().optional(),
+  city: z.string().nullable().optional(),
+  postal_code: z.string().nullable().optional(),
+  about: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional()
 });
 
 const UpdateSchema = InsertSchema.partial();
 
-// For backward compatibility with repositories
-const MUTABLE_FIELDS = ['owner_id', 'description', 'size'];
+const MUTABLE_FIELDS = [
+  'org_name',
+  'email',
+  'phone',
+  'address_line_1',
+  'address_line_2',
+  'country',
+  'state',
+  'city',
+  'postal_code',
+  'about',
+  'updated_at'
+];
 
 function parseInsert(input) {
   return InsertSchema.parse(input);
@@ -51,5 +83,4 @@ module.exports = {
   parseUpdate,
   MUTABLE_FIELDS
 };
-
 

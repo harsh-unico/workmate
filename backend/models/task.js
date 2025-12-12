@@ -1,7 +1,6 @@
 'use strict';
 
 const { z } = require('zod');
-const { taskStatusValues, taskPriorityValues } = require('../enums');
 
 const TABLE = 'tasks';
 const COLUMNS = Object.freeze({
@@ -9,42 +8,42 @@ const COLUMNS = Object.freeze({
   createdAt: 'created_at',
   title: 'title',
   description: 'description',
-  assigner: 'assigner',
   status: 'status',
   priority: 'priority',
   dueDate: 'due_date',
   projectId: 'project_id',
-  assignee: 'assignee',
-  attachmentUrl: 'attachment_url',
-  attachmentName: 'attachment_name'
+  assigneeId: 'assignee_id',
+  assignerId: 'assigner_id',
+  completedAt: 'completed_at',
+  updatedAt: 'updated_at'
 });
 
 const RowSchema = z.object({
-  id: z.number(),
-  created_at: z.string(),
+  id: z.string(),
+  created_at: z.string().optional(),
   title: z.string(),
   description: z.string().nullable().optional(),
-  assigner: z.number().nullable().optional(),
-  status: z.enum(taskStatusValues).nullable().optional(),
-  priority: z.enum(taskPriorityValues).nullable().optional(),
+  status: z.string().nullable().optional(),
+  priority: z.string().nullable().optional(),
   due_date: z.string().nullable().optional(),
-  project_id: z.number(),
-  assignee: z.number().nullable().optional(),
-  attachment_url: z.string().url().nullable().optional(),
-  attachment_name: z.string().nullable().optional()
+  project_id: z.string().nullable().optional(),
+  assignee_id: z.string().nullable().optional(),
+  assigner_id: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional()
 });
 
 const InsertSchema = z.object({
   title: z.string(),
   description: z.string().nullable().optional(),
-  assigner: z.number().nullable().optional(),
-  status: z.enum(taskStatusValues).nullable().optional(),
-  priority: z.enum(taskPriorityValues).nullable().optional(),
+  status: z.string().nullable().optional(),
+  priority: z.string().nullable().optional(),
   due_date: z.string().nullable().optional(),
-  project_id: z.number(),
-  assignee: z.number().nullable().optional(),
-  attachment_url: z.string().url().nullable().optional(),
-  attachment_name: z.string().nullable().optional()
+  project_id: z.string().nullable().optional(),
+  assignee_id: z.string().nullable().optional(),
+  assigner_id: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
+  updated_at: z.string().nullable().optional()
 });
 
 const UpdateSchema = InsertSchema.partial();
@@ -52,14 +51,14 @@ const UpdateSchema = InsertSchema.partial();
 const MUTABLE_FIELDS = [
   'title',
   'description',
-  'assigner',
   'status',
   'priority',
   'due_date',
   'project_id',
-  'assignee',
-  'attachment_url',
-  'attachment_name'
+  'assignee_id',
+  'assigner_id',
+  'completed_at',
+  'updated_at'
 ];
 
 function parseInsert(input) {

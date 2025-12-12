@@ -25,7 +25,7 @@ const Login = () => {
   // Form validators
   const validators = {
     email: validateEmail,
-    password: (value) => validatePassword(value, { minLength: 6 }),
+    password: (value) => validatePassword(value, { minLength: 6}),
   }
 
   // Form submission handler

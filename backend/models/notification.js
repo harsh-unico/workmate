@@ -1,48 +1,51 @@
 'use strict';
 
 const { z } = require('zod');
-const { notificationEntityTypeValues } = require('../enums');
 
 const TABLE = 'notifications';
 const COLUMNS = Object.freeze({
   id: 'id',
   createdAt: 'created_at',
-  userId: 'user_id',
-  entityType: 'entity_type',
-  entityId: 'entity_id',
+  orgId: 'org_id',
+  projectId: 'project_id',
+  taskId: 'task_id',
+  senderId: 'sender_id',
   title: 'title',
-  message: 'message',
+  content: 'content',
   isRead: 'is_read'
 });
 
 const RowSchema = z.object({
-  id: z.number(),
-  created_at: z.string(),
-  user_id: z.number(),
-  entity_type: z.enum(notificationEntityTypeValues).nullable().optional(),
-  entity_id: z.number().nullable().optional(),
+  id: z.string(),
+  created_at: z.string().optional(),
+  org_id: z.string().nullable().optional(),
+  project_id: z.string().nullable().optional(),
+  task_id: z.string().nullable().optional(),
+  sender_id: z.string().nullable().optional(),
   title: z.string(),
-  message: z.string().nullable().optional(),
+  content: z.string().nullable().optional(),
   is_read: z.boolean().default(false)
 });
 
 const InsertSchema = z.object({
-  user_id: z.number(),
-  entity_type: z.enum(notificationEntityTypeValues).nullable().optional(),
-  entity_id: z.number().nullable().optional(),
+  org_id: z.string().nullable().optional(),
+  project_id: z.string().nullable().optional(),
+  task_id: z.string().nullable().optional(),
+  sender_id: z.string().nullable().optional(),
   title: z.string(),
-  message: z.string().nullable().optional(),
+  content: z.string().nullable().optional(),
   is_read: z.boolean().optional()
 });
 
 const UpdateSchema = InsertSchema.partial();
 
 const MUTABLE_FIELDS = [
-  'user_id',
-  'entity_type',
-  'entity_id',
+  'org_id',
+  'project_id',
+  'task_id',
+  'sender_id',
   'title',
-  'message',
+  'content',
   'is_read'
 ];
 
