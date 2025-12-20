@@ -13,7 +13,7 @@ export const appRoutes = [
   {
     path: ROUTES.REGISTER,
     element: 'Register', // Will be replaced with actual component
-    public: true,
+    public: true ,
   },
   {
     path: ROUTES.DASHBOARD,
