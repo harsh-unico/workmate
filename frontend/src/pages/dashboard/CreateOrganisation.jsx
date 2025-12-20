@@ -38,9 +38,8 @@ const CreateOrganisation = () => {
     // Placeholder for submit logic
     console.log("Create organisation form data:", formData);
   };
-
   return (
-    <DashboardLayout>
+    <DashboardLayout showSidebar={false}>
       <div
         style={{
           padding: t.spacing(6),

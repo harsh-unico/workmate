@@ -51,5 +51,6 @@ export const ROUTES = {
   SETTINGS: '/settings',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
+  EMPLOYEE_DASHBOARD: '/employee-dashboard',
 }
 

@@ -7,4 +7,5 @@ export { default as AttachmentList } from './AttachmentList'
 export { default as PriorityFilterDropdown } from './PriorityFilterDropdown'
 export { default as AssigneeFilterDropdown } from './AssigneeFilterDropdown'
 export { default as SortFilterDropdown } from './SortFilterDropdown'
+export { default as ProfileDropdown } from './ProfileDropdown'
 

@@ -37,6 +37,12 @@ export const appRoutes = [
     element: 'ResetPassword', // Will be replaced with actual component
     public: true,
   },
+  {
+    path: ROUTES.EMPLOYEE_DASHBOARD,
+    element: 'EmployeeDashboard', // Will be replaced with actual component
+    public: false,
+    requiresAuth: true,
+  },
 ]
 
 /**

@@ -11,7 +11,8 @@ const COLUMNS = Object.freeze({
   passwordHash: 'password_hash',
   profileImageUrl: 'profile_image_url',
   status: 'status',
-  updatedAt: 'updated_at'
+  updatedAt: 'updated_at',
+  isAdmin: 'is_admin',
 });
 
 const RowSchema = z.object({
@@ -22,7 +23,8 @@ const RowSchema = z.object({
   password_hash: z.string().nullable().optional(),
   profile_image_url: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
-  updated_at: z.string().nullable().optional()
+  updated_at: z.string().nullable().optional(),
+  is_admin: z.boolean()
 });
 
 const InsertSchema = z.object({
@@ -31,7 +33,8 @@ const InsertSchema = z.object({
   password_hash: z.string().nullable().optional(),
   profile_image_url: z.string().nullable().optional(),
   status: z.string().nullable().optional(),
-  updated_at: z.string().nullable().optional()
+  updated_at: z.string().nullable().optional(),
+  is_admin: z.boolean()
 });
 
 const UpdateSchema = InsertSchema.partial();
@@ -42,7 +45,8 @@ const MUTABLE_FIELDS = [
   'password_hash',
   'profile_image_url',
   'status',
-  'updated_at'
+  'updated_at',
+  'is_admin'
 ];
 
 function parseInsert(input) {

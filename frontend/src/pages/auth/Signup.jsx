@@ -76,6 +76,7 @@ const Signup = () => {
       email: '',
       password: '',
       confirmPassword: '',
+      isAdmin: false,
     },
     {
       // wrap validators so confirmPassword gets access to all values
@@ -169,7 +170,53 @@ const Signup = () => {
             onBlur={() => handleBlur('confirmPassword')}
             error={touched.confirmPassword && errors.confirmPassword}
           />
-          <FieldError error={touched.confirmPassword ? errors.confirmPassword : null} />
+          <FieldError
+            error={touched.confirmPassword ? errors.confirmPassword : null}
+          />
+        </div>
+
+        <div style={{ marginBottom: t.spacing(4) }}>
+          <Label>Are you an admin?</Label>
+          <div
+            style={{
+              marginTop: t.spacing(2),
+              display: 'flex',
+              alignItems: 'center',
+              gap: t.spacing(3),
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => handleChange('isAdmin', !values.isAdmin)}
+              style={{
+                width: '56px',
+                height: '30px',
+                borderRadius: '999px',
+                border: 'none',
+                padding: '3px',
+                backgroundColor: values.isAdmin ? '#10B981' : '#4B5563',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: values.isAdmin ? 'flex-end' : 'flex-start',
+                cursor: 'pointer',
+                transition:
+                  'background-color 0.2s ease, justify-content 0.2s ease',
+              }}
+            >
+              <div
+                style={{
+                  width: '22px',
+                  height: '22px',
+                  borderRadius: '999px',
+                  backgroundColor: '#FFFFFF',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+                }}
+              />
+            </button>
+            <BodyText muted>
+              {values.isAdmin ? 'Yes, I am an admin' : 'No, I am not an admin'}
+            </BodyText>
+          </div>
         </div>
 
         <AuthButton type="submit" disabled={!isFormValid || isSubmitting}>
