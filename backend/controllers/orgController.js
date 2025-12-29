@@ -4,6 +4,7 @@ const orgRepository = require('../repositories/orgRepository');
 const orgMemberRepository = require('../repositories/orgMemberRepository');
 const projectRepository = require('../repositories/projectRepository');
 const taskRepository = require('../repositories/taskRepository');
+const userRepository = require('../repositories/userRepository');
 
 async function handle(controllerFn, req, res) {
   try {
@@ -34,6 +35,26 @@ async function requireOrgMember(req, orgId) {
     user_id: String(userId)
   });
   if (!orgMember) {
+    const error = new Error('Forbidden');
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
+async function requireOrgAdmin(req, orgId) {
+  const userId = req.user && req.user.id ? String(req.user.id) : null;
+  if (!userId) {
+    const error = new Error('Not authenticated');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  const membership = await orgMemberRepository.findOne({
+    org_id: String(orgId),
+    user_id: String(userId)
+  });
+
+  if (!membership || !membership.is_admin) {
     const error = new Error('Forbidden');
     error.statusCode = 403;
     throw error;
@@ -244,6 +265,99 @@ function listOrgProjects(req, res) {
   }, req, res);
 }
 
+function listOrgMembersDetailed(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    // Any org member can view members list
+    await requireOrgMember(req, orgId);
+
+    const memberships = await orgMemberRepository.findMany({ org_id: String(orgId) });
+    const userIds = memberships.map((m) => m.user_id).filter(Boolean);
+    const users = await userRepository.findManyByIds(userIds);
+    const usersById = new Map(users.map((u) => [String(u.id), u]));
+
+    const data = memberships.map((m) => ({
+      id: m.id, // org_members row id
+      org_id: m.org_id,
+      user_id: m.user_id,
+      department: m.department || null,
+      is_admin: !!m.is_admin,
+      joined_at: m.joined_at || null,
+      user: usersById.get(String(m.user_id)) || null
+    }));
+
+    return { data };
+  }, req, res);
+}
+
+function inviteOrgMembers(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireOrgAdmin(req, orgId);
+
+    const { emails, isAdmin, department } = req.body || {};
+    const list = Array.isArray(emails) ? emails : [];
+    const normalized = Array.from(
+      new Set(
+        list
+          .map((e) => String(e || '').trim().toLowerCase())
+          .filter(Boolean)
+      )
+    );
+
+    if (normalized.length === 0) {
+      const error = new Error('emails is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const added = [];
+    const skipped = [];
+    const notFound = [];
+
+    for (const email of normalized) {
+      const user = await userRepository.findByEmail(email);
+      if (!user) {
+        notFound.push(email);
+        continue;
+      }
+
+      const existing = await orgMemberRepository.findOne({
+        org_id: String(orgId),
+        user_id: String(user.id)
+      });
+
+      if (existing) {
+        skipped.push(email);
+        continue;
+      }
+
+      const created = await orgMemberRepository.insertOne({
+        org_id: String(orgId),
+        user_id: String(user.id),
+        department: department !== undefined ? department : null,
+        is_admin: isAdmin !== undefined ? Boolean(isAdmin) : false
+      });
+
+      added.push({ email, org_member: created });
+    }
+
+    return { data: { orgId, added, skipped, notFound } };
+  }, req, res);
+}
+
 module.exports = {
   listOrganisations,
   listAdminOrganisations,
@@ -253,7 +367,9 @@ module.exports = {
   getOrgMemberCount,
   getOrgTaskCount,
   getOrganisationById,
-  listOrgProjects
+  listOrgProjects,
+  listOrgMembersDetailed,
+  inviteOrgMembers
 };
 
 

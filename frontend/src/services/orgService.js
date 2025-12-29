@@ -52,5 +52,20 @@ export const getOrganisationProjects = async (orgId) => {
   )
 }
 
+export const getOrganisationMembers = async (orgId) => {
+  if (!orgId) throw new Error('orgId is required')
+  return apiClient.get(
+    `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}/members`
+  )
+}
+
+export const inviteOrganisationMembers = async (orgId, emails) => {
+  if (!orgId) throw new Error('orgId is required')
+  return apiClient.post(
+    `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}/members/invite`,
+    { emails }
+  )
+}
+
 
 

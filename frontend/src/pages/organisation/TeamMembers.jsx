@@ -1,56 +1,84 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { TeamMemberCard } from "../../components";
 import { useTheme } from "../../context/theme";
 import RemoveMemberPopup from "./RemoveMemberPopup";
 import InviteMemberPopup from "./InviteMemberPopup";
+import {
+  getOrganisationById,
+  getOrganisationMembers,
+  inviteOrganisationMembers,
+} from "../../services/orgService";
 
-const TEAM_MEMBERS = [
-  {
-    id: 1,
-    name: "Jane Doe",
-    role: "Project Manager",
-    activeProjects: 5,
-    status: "active",
-    avatarBg: "#22c55e",
-  },
-  {
-    id: 2,
-    name: "Sarah Johnson",
-    role: "Lead Developer",
-    activeProjects: 8,
-    status: "active",
-    avatarBg: "#f97316",
-  },
-  {
-    id: 3,
-    name: "David Lee",
-    role: "UI/UX Designer",
-    activeProjects: 3,
-    status: "pending",
-    avatarBg: "#3b82f6",
-  },
-  {
-    id: 4,
-    name: "Emily Ray",
-    role: "Marketing Specialist",
-    activeProjects: 2,
-    status: "inactive",
-    avatarBg: "#ef4444",
-  },
-];
+const AVATAR_COLORS = ["#22c55e", "#f97316", "#3b82f6", "#ef4444", "#6366f1"];
+const toUiStatus = (value) => {
+  const v = String(value || "").toLowerCase();
+  if (!v) return "active";
+  if (v.includes("active")) return "active";
+  if (v.includes("pending")) return "pending";
+  return "inactive";
+};
 
 const OrganisationTeamMembers = () => {
   const t = useTheme();
-  // eslint-disable-next-line no-unused-vars
   const { id } = useParams();
   const [searchQuery, setSearchQuery] = useState("");
-  const [members, setMembers] = useState(TEAM_MEMBERS);
+  const [org, setOrg] = useState(null);
+  const [members, setMembers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const [memberToRemove, setMemberToRemove] = useState(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
-  const organisationName = "Quantum Solutions";
+  const organisationName = org?.org_name || "Organisation";
+
+  const loadMembers = async () => {
+    const orgId = id;
+    if (!orgId) return;
+    setIsLoading(true);
+    setError("");
+    try {
+      const [orgRes, membersRes] = await Promise.all([
+        getOrganisationById(orgId),
+        getOrganisationMembers(orgId),
+      ]);
+
+      setOrg(orgRes?.data || null);
+
+      const list = Array.isArray(membersRes?.data) ? membersRes.data : [];
+      const mapped = list
+        .map((m, index) => {
+          const user = m.user || {};
+          const displayName =
+            user.name || user.email || `User ${String(m.user_id || "").slice(0, 6)}`;
+          return {
+            id: m.id, // org_members row id (used for removal later if needed)
+            name: displayName,
+            role: m.is_admin ? "Admin" : "Member",
+            activeProjects: 0,
+            status: toUiStatus(user.status),
+            avatarBg: AVATAR_COLORS[index % AVATAR_COLORS.length],
+            email: user.email || "",
+            userId: m.user_id,
+          };
+        })
+        .filter(Boolean);
+      setMembers(mapped);
+    } catch (err) {
+      console.error("Failed to load organisation members:", err);
+      setError(err?.message || "Failed to load members.");
+      setOrg(null);
+      setMembers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMembers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const filteredMembers = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -71,20 +99,26 @@ const OrganisationTeamMembers = () => {
   };
 
   const handleConfirmRemove = () => {
-    if (memberToRemove) {
-      setMembers((prev) => prev.filter((m) => m.id !== memberToRemove.id));
-    }
+    // TODO: Wire remove to backend (DELETE org-member) if desired.
     setMemberToRemove(null);
   };
 
   const handleOpenInvite = () => setIsInviteOpen(true);
   const handleCancelInvite = () => setIsInviteOpen(false);
-  const handleConfirmInvite = (emails) => {
-    // TODO: Wire to backend invite API.
-    // eslint-disable-next-line no-console
+  const handleConfirmInvite = async (emails) => {
     const list = Array.isArray(emails) ? emails : [emails].filter(Boolean);
-    console.log("Invite member:", { organisationId: id, emails: list });
-    setIsInviteOpen(false);
+    if (!id || list.length === 0) {
+      setIsInviteOpen(false);
+      return;
+    }
+    try {
+      await inviteOrganisationMembers(id, list);
+      setIsInviteOpen(false);
+      await loadMembers();
+    } catch (err) {
+      console.error("Failed to invite members:", err);
+      setError(err?.message || "Failed to invite members.");
+    }
   };
 
   const renderMemberCard = (member) => {
@@ -106,6 +140,19 @@ const OrganisationTeamMembers = () => {
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
     >
+      {error && (
+        <div
+          style={{
+            marginBottom: t.spacing(4),
+            padding: t.spacing(2),
+            borderRadius: t.radius.card,
+            backgroundColor: "#fee2e2",
+            color: "#b91c1c",
+          }}
+        >
+          {error}
+        </div>
+      )}
       <div
         style={{
           display: "grid",
@@ -114,7 +161,11 @@ const OrganisationTeamMembers = () => {
           alignItems: "stretch",
         }}
       >
-        {filteredMembers.map((member) => renderMemberCard(member))}
+        {isLoading ? (
+          <div>Loading members...</div>
+        ) : (
+          filteredMembers.map((member) => renderMemberCard(member))
+        )}
       </div>
       <RemoveMemberPopup
         isOpen={!!memberToRemove}

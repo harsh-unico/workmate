@@ -60,11 +60,33 @@ async function searchByEmail(query, { limit = 10 } = {}) {
   }));
 }
 
+async function findManyByIds(ids) {
+  const uniqueIds = Array.from(new Set((ids || []).filter(Boolean).map(String)));
+  if (uniqueIds.length === 0) return [];
+
+  // Only select safe fields (never return password_hash).
+  const { data, error } = await db
+    .from(User.TABLE)
+    .select('id,email,name,profile_image_url,status,is_admin')
+    .in('id', uniqueIds);
+
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    profile_image_url: row.profile_image_url,
+    status: row.status,
+    is_admin: row.is_admin
+  }));
+}
+
 module.exports = {
   ...base,
   findByEmail,
   updatePasswordHashByEmail,
-  searchByEmail
+  searchByEmail,
+  findManyByIds
 };
 
 
