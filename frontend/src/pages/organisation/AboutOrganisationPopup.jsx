@@ -6,8 +6,17 @@ const AboutOrganisationPopup = ({
   isOpen,
   onClose,
   organisationName = "Quantum Solutions",
+  descriptionHtml = "",
+  email = "",
+  contactNumber = "",
+  address = "",
+  error = "",
 }) => {
   const t = useTheme();
+  const hasDescription =
+    typeof descriptionHtml === "string" &&
+    descriptionHtml.trim() !== "" &&
+    descriptionHtml.trim() !== "<p><br></p>";
 
   return (
     <Popup
@@ -23,40 +32,40 @@ const AboutOrganisationPopup = ({
           lineHeight: 1.6,
         }}
       >
-        <p
-          style={{
-            margin: 0,
-            marginBottom: t.spacing(2),
-          }}
-        >
-          Quantum Solutions is a forward-thinking AI and software engineering
-          company specializing in intelligent automation and data-driven
-          enterprise solutions. Our mission is to empower organizations with
-          cutting-edge technology that simplifies workflows, enhances
-          collaboration, and drives measurable impact.
-        </p>
+        {error && (
+          <div
+            style={{
+              marginBottom: t.spacing(3),
+              padding: t.spacing(2),
+              borderRadius: t.radius.card,
+              backgroundColor: "#fee2e2",
+              color: "#b91c1c",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-        <p
-          style={{
-            margin: 0,
-            marginBottom: t.spacing(2),
-          }}
-        >
-          We focus on delivering scalable systems that merge human creativity
-          with artificial intelligence — from machine learning integrations to
-          workflow automation tools.
-        </p>
-
-        <p
-          style={{
-            margin: 0,
-            marginBottom: t.spacing(3),
-          }}
-        >
-          With a team of passionate engineers, designers, and data scientists,
-          Quantum Solutions is redefining the way businesses operate in the
-          digital era through innovation, precision, and integrity.
-        </p>
+        {hasDescription ? (
+          <div
+            style={{
+              margin: 0,
+              marginBottom: t.spacing(3),
+            }}
+            // Quill stores HTML; we render it as-is for rich text display.
+            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+          />
+        ) : (
+          <p
+            style={{
+              margin: 0,
+              marginBottom: t.spacing(3),
+              color: t.colors.textMutedDark,
+            }}
+          >
+            No description provided.
+          </p>
+        )}
 
         <h3
           style={{
@@ -77,25 +86,29 @@ const AboutOrganisationPopup = ({
             gap: t.spacing(1.5),
           }}
         >
-          <CopyableRow copyValue="quantumsol@gmail.com" icon="✉">
-            quantumsol@gmail.com
-          </CopyableRow>
+          {email ? (
+            <CopyableRow copyValue={email} icon="✉">
+              {email}
+            </CopyableRow>
+          ) : null}
 
-          <CopyableRow copyValue="+91 6794628751" icon="☎">
-            +91 6794628751
-          </CopyableRow>
+          {contactNumber ? (
+            <CopyableRow copyValue={contactNumber} icon="☎">
+              {contactNumber}
+            </CopyableRow>
+          ) : null}
 
-          <CopyableRow
-            copyValue="Neeladri Nagar, Electronic City Phase I, Electronic City, Bengaluru, Karnataka 560100, India"
-            icon="📍"
-            align="flex-start"
-          >
-            Neeladri Nagar, Electronic City Phase I
-            <br />
-            Electronic City, Bengaluru
-            <br />
-            Karnataka 560100, India
-          </CopyableRow>
+          {address ? (
+            <CopyableRow copyValue={address} icon="📍" align="flex-start">
+              {address}
+            </CopyableRow>
+          ) : null}
+
+          {!email && !contactNumber && !address ? (
+            <div style={{ color: t.colors.textMutedDark }}>
+              No contact info available.
+            </div>
+          ) : null}
         </div>
       </div>
     </Popup>

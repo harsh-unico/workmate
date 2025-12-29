@@ -16,12 +16,14 @@ import { useForm } from '../../hooks/useForm'
 import { validateEmail, validatePassword, validateName } from '../../validators'
 import { useAuth } from '../../hooks/useAuth'
 import { ROUTES } from '../../utils/constants'
+import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/icons/logo.png'
 import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
 
 const Signup = () => {
   const t = useTheme()
   const { register } = useAuth()
+  const navigate = useNavigate()
 
   const validators = {
     name: validateName,
@@ -55,8 +57,10 @@ const Signup = () => {
         name: values.name,
         email: values.email,
         password: values.password,
+        isAdmin: !!values.isAdmin,
       })
-      console.log('Signup successful')
+      // After sending OTP, navigate to OTP verification screen
+      navigate(ROUTES.OTP_VERIFICATION)
     } catch (error) {
       throw error
     }
@@ -88,12 +92,16 @@ const Signup = () => {
     handleSignup,
   )
 
+  // Ignore submit-level errors when determining if the button should be enabled
+  const { submit: _submitError, ...fieldErrors } = errors
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0
+
   const isFormValid =
     values.name.trim() !== '' &&
     values.email.trim() !== '' &&
     values.password.trim() !== '' &&
     values.confirmPassword.trim() !== '' &&
-    Object.keys(errors).length === 0
+    !hasFieldErrors
 
   return (
     <AuthCard backgroundVideo={authBackgroundVideo} dimBackground={false} fixedHeight>
@@ -170,53 +178,56 @@ const Signup = () => {
             onBlur={() => handleBlur('confirmPassword')}
             error={touched.confirmPassword && errors.confirmPassword}
           />
-          <FieldError
-            error={touched.confirmPassword ? errors.confirmPassword : null}
-          />
+          <FieldError error={touched.confirmPassword ? errors.confirmPassword : null} />
         </div>
 
-        <div style={{ marginBottom: t.spacing(4) }}>
-          <Label>Are you an admin?</Label>
-          <div
-            style={{
-              marginTop: t.spacing(2),
-              display: 'flex',
-              alignItems: 'center',
-              gap: t.spacing(3),
-            }}
-          >
-            <button
-              type="button"
-              onClick={() => handleChange('isAdmin', !values.isAdmin)}
-              style={{
-                width: '56px',
-                height: '30px',
-                borderRadius: '999px',
-                border: 'none',
-                padding: '3px',
-                backgroundColor: values.isAdmin ? '#10B981' : '#4B5563',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: values.isAdmin ? 'flex-end' : 'flex-start',
-                cursor: 'pointer',
-                transition:
-                  'background-color 0.2s ease, justify-content 0.2s ease',
-              }}
-            >
-              <div
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '999px',
-                  backgroundColor: '#FFFFFF',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
-                }}
-              />
-            </button>
-            <BodyText muted>
-              {values.isAdmin ? 'Yes, I am an admin' : 'No, I am not an admin'}
+        {/* Admin toggle */}
+        <div
+          style={{
+            marginBottom: t.spacing(4),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: t.spacing(3),
+          }}
+        >
+          <div>
+            <Label style={{ marginBottom: t.spacing(1) }}>Admin account</Label>
+            <BodyText muted style={{ margin: 0 }}>
+              Enable if this user should have admin access.
             </BodyText>
           </div>
+
+          <button
+            type="button"
+            onClick={() => handleChange('isAdmin', !values.isAdmin)}
+            aria-pressed={values.isAdmin}
+            style={{
+              width: 64,
+              height: 34,
+              borderRadius: 999,
+              border: 'none',
+              cursor: 'pointer',
+              padding: 4,
+              background: values.isAdmin
+                ? 'linear-gradient(90deg, #34d399, #60a5fa)'
+                : '#e5e7eb',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: values.isAdmin ? 'flex-end' : 'flex-start',
+            }}
+          >
+            <span
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                background: '#fff',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+                display: 'block',
+              }}
+            />
+          </button>
         </div>
 
         <AuthButton type="submit" disabled={!isFormValid || isSubmitting}>

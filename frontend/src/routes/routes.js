@@ -13,7 +13,7 @@ export const appRoutes = [
   {
     path: ROUTES.REGISTER,
     element: 'Register', // Will be replaced with actual component
-    public: true ,
+    public: true,
   },
   {
     path: ROUTES.DASHBOARD,
@@ -36,12 +36,6 @@ export const appRoutes = [
     path: ROUTES.RESET_PASSWORD,
     element: 'ResetPassword', // Will be replaced with actual component
     public: true,
-  },
-  {
-    path: ROUTES.EMPLOYEE_DASHBOARD,
-    element: 'EmployeeDashboard', // Will be replaced with actual component
-    public: false,
-    requiresAuth: true,
   },
 ]
 

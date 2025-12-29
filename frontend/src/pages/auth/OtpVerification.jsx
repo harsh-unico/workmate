@@ -7,7 +7,9 @@ import {
   OtpInput,
 } from '../../components'
 import { useTheme } from '../../context/theme'
-import { ROUTES } from '../../utils/constants'
+import { ROUTES, STORAGE_KEYS } from '../../utils/constants'
+import { verifyOtp } from '../../services/authService'
+import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/icons/logo.png'
 import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
 
@@ -16,10 +18,12 @@ const INITIAL_SECONDS = 60
 
 const OtpVerification = () => {
   const t = useTheme()
+  const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [secondsLeft, setSecondsLeft] = useState(INITIAL_SECONDS)
   const [isResendEnabled, setIsResendEnabled] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (secondsLeft <= 0) {
@@ -39,9 +43,20 @@ const OtpVerification = () => {
     if (code.length !== OTP_LENGTH) return
 
     setIsSubmitting(true)
+    setError('')
     try {
-      // TODO: call backend verify API
-      console.log('Verifying OTP:', code)
+      const email = localStorage.getItem(STORAGE_KEYS.SIGNUP_EMAIL)
+      if (!email) {
+        setError('Signup session expired. Please sign up again.')
+        setIsSubmitting(false)
+        return
+      }
+
+      await verifyOtp({ email, otp: code })
+      // After successful verification, redirect to login
+      navigate(ROUTES.LOGIN)
+    } catch (err) {
+      setError(err?.message || 'Failed to verify OTP. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -87,6 +102,17 @@ const OtpVerification = () => {
       >
         Enter the verification code sent to your registered email address
       </BodyText>
+
+      {error && (
+        <BodyText
+          style={{
+            marginBottom: t.spacing(4),
+            color: t.colors.danger,
+          }}
+        >
+          {error}
+        </BodyText>
+      )}
 
       <form onSubmit={handleVerify}>
         <div

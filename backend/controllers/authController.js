@@ -1,6 +1,8 @@
 'use strict';
 
 const authService = require('../services/authService');
+const { NODE_ENV } = require('../config/env');
+const userRepository = require('../repositories/userRepository');
 
 async function handle(controllerFn, req, res) {
   try {
@@ -19,13 +21,13 @@ async function handle(controllerFn, req, res) {
 }
 
 function signup(req, res) {
-  const { email, password, name } = req.body;
-  return handle(() => authService.sendSignupOtp({ email, password, name }), req, res);
+  const { email, password, name, isAdmin } = req.body;
+  return handle(() => authService.sendSignupOtp({ email, password, name, isAdmin }), req, res);
 }
 
 function sendOtp(req, res) {
-  const { email, password, name } = req.body;
-  return handle(() => authService.sendSignupOtp({ email, password, name }), req, res);
+  const { email, password, name, isAdmin } = req.body;
+  return handle(() => authService.sendSignupOtp({ email, password, name, isAdmin }), req, res);
 }
 
 function verifyOtp(req, res) {
@@ -35,7 +37,21 @@ function verifyOtp(req, res) {
 
 function login(req, res) {
   const { email, password } = req.body;
-  return handle(() => authService.login({ email, password }), req, res);
+  return handle(async () => {
+    const result = await authService.login({ email, password });
+
+    if (result.session && result.session.access_token) {
+      res.cookie('auth_token', result.session.access_token, {
+        httpOnly: true,
+        secure: NODE_ENV === 'production',
+        sameSite: 'lax',
+        // Use Supabase session expiry (in seconds) when available, otherwise 7 days
+        maxAge: (result.session.expires_in || 7 * 24 * 60 * 60) * 1000
+      });
+    }
+
+    return result;
+  }, req, res);
 }
 
 function forgotPassword(req, res) {
@@ -48,13 +64,47 @@ function resetPassword(req, res) {
   return handle(() => authService.resetPassword({ email, newPassword, token }), req, res);
 }
 
+function logout(req, res) {
+  return handle(() => {
+    res.cookie('auth_token', '', {
+      httpOnly: true,
+      secure: NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 0
+    });
+
+    return { message: 'Logged out successfully' };
+  }, req, res);
+}
+
+function me(req, res) {
+  return handle(async () => {
+    if (!req.user || !req.user.email) {
+      const error = new Error('Not authenticated');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const profile = await userRepository.findByEmail(req.user.email);
+    if (!profile) {
+      const error = new Error('User profile not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return { profile };
+  }, req, res);
+}
+
 module.exports = {
   signup,
   sendOtp,
   verifyOtp,
   login,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  logout,
+  me
 };
 
 

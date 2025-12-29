@@ -3,15 +3,18 @@
 const express = require('express');
 
 const taskController = require('../controllers/taskController');
-const { createTaskValidator, updateTaskValidator } = require('../validators/taskValidators');
-const { handleValidation } = require('../validators');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', taskController.getAllTasks);
-router.post('/', createTaskValidator, handleValidation, taskController.createTask);
-router.get('/:id', taskController.getTaskDetails);
-router.put('/:id', updateTaskValidator, handleValidation, taskController.updateTask);
+// All task routes are protected
+router.post('/', requireAuth, taskController.createTask);
+router.get('/', requireAuth, taskController.listTasks);
+router.get('/assignee/:userId', requireAuth, taskController.listTasksByAssignee);
+router.get('/assigner/:userId', requireAuth, taskController.listTasksByAssigner);
+router.get('/:id', requireAuth, taskController.getTaskById);
+router.patch('/:id', requireAuth, taskController.updateTaskById);
+router.delete('/:id', requireAuth, taskController.deleteTaskById);
 
 module.exports = router;
 

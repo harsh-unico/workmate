@@ -4,6 +4,7 @@ import { OrganisationLayout } from "../../layouts";
 import { TeamMemberCard } from "../../components";
 import { useTheme } from "../../context/theme";
 import RemoveMemberPopup from "./RemoveMemberPopup";
+import InviteMemberPopup from "./InviteMemberPopup";
 
 const TEAM_MEMBERS = [
   {
@@ -47,6 +48,7 @@ const OrganisationTeamMembers = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [members, setMembers] = useState(TEAM_MEMBERS);
   const [memberToRemove, setMemberToRemove] = useState(null);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   const organisationName = "Quantum Solutions";
 
@@ -75,6 +77,16 @@ const OrganisationTeamMembers = () => {
     setMemberToRemove(null);
   };
 
+  const handleOpenInvite = () => setIsInviteOpen(true);
+  const handleCancelInvite = () => setIsInviteOpen(false);
+  const handleConfirmInvite = (emails) => {
+    // TODO: Wire to backend invite API.
+    // eslint-disable-next-line no-console
+    const list = Array.isArray(emails) ? emails : [emails].filter(Boolean);
+    console.log("Invite member:", { organisationId: id, emails: list });
+    setIsInviteOpen(false);
+  };
+
   const renderMemberCard = (member) => {
     return (
       <TeamMemberCard
@@ -88,8 +100,8 @@ const OrganisationTeamMembers = () => {
   return (
     <OrganisationLayout
       organisationName={organisationName}
-      primaryActionLabel="+ Invite Member"
-      onPrimaryAction={() => {}}
+      primaryActionLabel="+ Add Member"
+      onPrimaryAction={handleOpenInvite}
       searchPlaceholder="Search team members..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
@@ -109,6 +121,11 @@ const OrganisationTeamMembers = () => {
         onCancel={handleCancelRemove}
         onConfirm={handleConfirmRemove}
         memberName={memberToRemove?.name}
+      />
+      <InviteMemberPopup
+        isOpen={isInviteOpen}
+        onCancel={handleCancelInvite}
+        onConfirm={handleConfirmInvite}
       />
     </OrganisationLayout>
   );

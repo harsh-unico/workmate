@@ -78,13 +78,21 @@ function createRepository({ table, rowSchema, insertSchema, updateSchema, mutabl
     return rowSchema ? rowSchema.parse(data) : data;
   }
 
+  async function deleteById(id) {
+    const { data, error } = await db.from(table).delete().eq('id', id).select('*').maybeSingle();
+    if (error) throw error;
+    if (!data) return null;
+    return rowSchema ? rowSchema.parse(data) : data;
+  }
+
   return {
     table,
     findById,
     findOne,
     findMany,
     insertOne,
-    updateById
+    updateById,
+    deleteById
   };
 }
 

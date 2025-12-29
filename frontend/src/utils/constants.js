@@ -3,7 +3,7 @@
  * Update these values based on your backend API
  */
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api',
   TIMEOUT: 30000, // 30 seconds
 }
 
@@ -13,16 +13,29 @@ export const API_CONFIG = {
  */
 export const API_ENDPOINTS = {
   AUTH: {
+    SIGNUP: '/auth/signup',
+    SEND_OTP: '/auth/send-otp',
+    VERIFY_OTP: '/auth/verify-otp',
     LOGIN: '/auth/login',
     LOGOUT: '/auth/logout',
-    REGISTER: '/auth/register',
-    REFRESH_TOKEN: '/auth/refresh',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
+    ME: '/auth/me',
   },
   USER: {
     PROFILE: '/user/profile',
     UPDATE_PROFILE: '/user/profile',
+    SEARCH: '/users/search',
+  },
+  ORG: {
+    // All org routes are protected (auth cookie / Bearer token)
+    LIST: '/orgs', // legacy: lists all orgs (admin-only usage recommended)
+    LIST_ADMIN: '/orgs/admin', // lists orgs where current user is admin
+    CREATE: '/orgs',
+  },
+  PROJECT: {
+    LIST: '/projects',
+    CREATE: '/projects',
   },
 }
 
@@ -30,9 +43,8 @@ export const API_ENDPOINTS = {
  * Local Storage Keys
  */
 export const STORAGE_KEYS = {
-  AUTH_TOKEN: 'auth_token',
-  REFRESH_TOKEN: 'refresh_token',
   USER: 'user',
+  SIGNUP_EMAIL: 'signup_email',
 }
 
 /**
@@ -51,6 +63,5 @@ export const ROUTES = {
   SETTINGS: '/settings',
   FORGOT_PASSWORD: '/forgot-password',
   RESET_PASSWORD: '/reset-password',
-  EMPLOYEE_DASHBOARD: '/employee-dashboard',
 }
 

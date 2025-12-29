@@ -19,17 +19,27 @@ export const AuthProvider = ({ children }) => {
    * Initialize auth state from storage
    */
   useEffect(() => {
-    const initAuth = () => {
+    const initAuth = async () => {
       try {
-        const storedUser = localStorage.getItem(STORAGE_KEYS.USER)
-        const token = localStorage.getItem(STORAGE_KEYS.AUTH_TOKEN)
-
-        if (storedUser && token) {
-          setUser(JSON.parse(storedUser))
+        // Prefer server-verified auth based on HTTP-only cookie
+        const current = await authService.getCurrentUser()
+        if (current && (current.profile || current.user)) {
+          setUser(current.profile || current.user)
           setIsAuthenticated(true)
+          return
         }
       } catch (error) {
-        console.error('Error initializing auth:', error)
+        // If server says not authenticated or any error occurs, fall back to local storage
+        try {
+          const storedUser = localStorage.getItem(STORAGE_KEYS.USER)
+          if (storedUser) {
+            setUser(JSON.parse(storedUser))
+            setIsAuthenticated(true)
+            return
+          }
+        } catch (storageError) {
+          console.error('Error reading auth from storage:', storageError)
+        }
       } finally {
         setIsLoading(false)
       }
@@ -44,7 +54,12 @@ export const AuthProvider = ({ children }) => {
   const login = async (credentials) => {
     try {
       const response = await authService.login(credentials)
-      setUser(response.user || response)
+      // Backend returns { message, session, user, profile }
+      const nextUser = response.profile || response.user || null
+      if (nextUser) {
+        setUser(nextUser)
+        localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(nextUser))
+      }
       setIsAuthenticated(true)
       return response
     } catch (error) {
@@ -71,9 +86,9 @@ export const AuthProvider = ({ children }) => {
    */
   const register = async (userData) => {
     try {
+      // Registration is an OTP-based flow; this step only triggers OTP
       const response = await authService.register(userData)
-      setUser(response.user || response)
-      setIsAuthenticated(true)
+      // Do NOT mark user as authenticated yet; they still need to verify OTP and then log in
       return response
     } catch (error) {
       throw error

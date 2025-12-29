@@ -218,7 +218,7 @@ const ProjectTasks = () => {
       }
       onPrimaryAction={() =>
         navigate(`/organisations/${id}/projects/${projectId}/tasks/create`, {
-          state: { projectName },
+          state: { projectName, from: `${location.pathname}${location.search}` },
         })
       }
       searchPlaceholder="Search tasks..."

@@ -51,7 +51,11 @@ const ForgotPassword = () => {
     handleForgotPassword
   )
 
-  const isFormValid = values.email.trim() !== '' && Object.keys(errors).length === 0
+  // Ignore submit-level errors when determining if the button should be enabled
+  const { submit: _submitError, ...fieldErrors } = errors
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0
+
+  const isFormValid = values.email.trim() !== '' && !hasFieldErrors
 
   return (
     <AuthCard backgroundVideo={loginBackgroundVideo} dimBackground={false}>

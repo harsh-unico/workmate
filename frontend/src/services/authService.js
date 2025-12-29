@@ -16,18 +16,12 @@ import { API_ENDPOINTS, STORAGE_KEYS } from '../utils/constants'
 export const login = async (credentials) => {
   try {
     const response = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, credentials)
-    
-    // Store tokens if provided
-    if (response.token) {
-      apiClient.setAuthToken(response.token)
-    }
-    if (response.refreshToken) {
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken)
-    }
-    if (response.user) {
+    // Backend sets HTTP-only cookie; we only persist user profile (if returned)
+    if (response && response.profile) {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.profile))
+    } else if (response && response.user) {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user))
     }
-
     return response
   } catch (error) {
     throw new Error(error.message || 'Login failed')
@@ -46,35 +40,42 @@ export const logout = async () => {
     console.error('Logout API call failed:', error)
   } finally {
     // Clear local storage
-    apiClient.setAuthToken(null)
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
     localStorage.removeItem(STORAGE_KEYS.USER)
   }
 }
 
 /**
- * Register new user
- * @param {object} userData - User registration data
- * @returns {Promise<object>} User data and tokens
+ * Begin signup (send OTP)
+ * @param {object} userData - { name, email, password }
+ * @returns {Promise<object>} API response
  */
 export const register = async (userData) => {
   try {
-    const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData)
-    
-    // Store tokens if provided
-    if (response.token) {
-      apiClient.setAuthToken(response.token)
+    // Backend /auth/signup sends OTP and does not log the user in
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.SIGNUP, userData)
+    // Store the email to use during OTP verification
+    if (userData?.email) {
+      localStorage.setItem(STORAGE_KEYS.SIGNUP_EMAIL, userData.email)
     }
-    if (response.refreshToken) {
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken)
-    }
-    if (response.user) {
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user))
-    }
-
     return response
   } catch (error) {
     throw new Error(error.message || 'Registration failed')
+  }
+}
+
+/**
+ * Verify signup OTP
+ * @param {object} data - { email, otp }
+ * @returns {Promise<object>}
+ */
+export const verifyOtp = async (data) => {
+  try {
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.VERIFY_OTP, data)
+    // On successful verification, we can clear the stored signup email
+    localStorage.removeItem(STORAGE_KEYS.SIGNUP_EMAIL)
+    return response
+  } catch (error) {
+    throw new Error(error.message || 'OTP verification failed')
   }
 }
 
@@ -94,8 +95,9 @@ export const forgotPassword = async (email) => {
 /**
  * Reset password with token
  * @param {object} resetData - Password reset data
- * @param {string} resetData.token - Reset token
- * @param {string} resetData.password - New password
+ * @param {string} resetData.email - User email
+ * @param {string} resetData.token - Reset token (Supabase access token)
+ * @param {string} resetData.newPassword - New password
  * @returns {Promise<void>}
  */
 export const resetPassword = async (resetData) => {
@@ -107,29 +109,20 @@ export const resetPassword = async (resetData) => {
 }
 
 /**
- * Refresh authentication token
- * @returns {Promise<object>} New tokens
+ * Get current authenticated user (based on cookie)
+ * @returns {Promise<object>} User/profile data
  */
-export const refreshToken = async () => {
+export const getCurrentUser = async () => {
   try {
-    const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN)
-    const response = await apiClient.post(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
-      refreshToken,
-    })
-
-    if (response.token) {
-      apiClient.setAuthToken(response.token)
+    const response = await apiClient.get(API_ENDPOINTS.AUTH.ME)
+    if (response && response.profile) {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.profile))
+    } else if (response && response.user) {
+      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(response.user))
     }
-    if (response.refreshToken) {
-      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, response.refreshToken)
-    }
-
     return response
   } catch (error) {
-    // Clear tokens on refresh failure
-    apiClient.setAuthToken(null)
-    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
-    throw new Error(error.message || 'Failed to refresh token')
+    throw new Error(error.message || 'Failed to get current user')
   }
 }
 

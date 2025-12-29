@@ -22,6 +22,7 @@ const CreateTask = () => {
   const { id, projectId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const returnTo = location.state?.from;
   const [formData, setFormData] = useState(initialFormData);
 
   const organisationName = "Quantum Solutions";
@@ -51,10 +52,13 @@ const CreateTask = () => {
     // TODO: Replace with API call to create a task for this project.
     // eslint-disable-next-line no-console
     console.log("Create task for project:", projectName, formData);
+
+    // Return to the page this form was opened from (fallback: tasks list)
+    navigate(returnTo || `/organisations/${id}/projects/${projectId}/tasks`);
   };
 
   const handleCancel = () => {
-    navigate(`/organisations/${id}/projects/${projectId}/tasks`);
+    navigate(returnTo || `/organisations/${id}/projects/${projectId}/tasks`);
   };
 
   return (

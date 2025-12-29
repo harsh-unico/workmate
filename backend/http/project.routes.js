@@ -3,22 +3,20 @@
 const express = require('express');
 
 const projectController = require('../controllers/projectController');
-const {
-  createProjectValidator,
-  updateProjectValidator
-} = require('../validators/projectValidators');
-const { handleValidation } = require('../validators');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', projectController.getAllProjects);
-router.post('/', createProjectValidator, handleValidation, projectController.createProject);
-router.get('/:id', projectController.getProjectDetails);
-router.put('/:id', updateProjectValidator, handleValidation, projectController.updateProject);
-
-router.get('/:projectId/tasks', projectController.getProjectTasks);
-router.get('/:projectId/members', projectController.getProjectMembers);
+// All project routes are protected
+router.get('/admin', requireAuth, projectController.listAdminProjects);
+// Get projects created by the given user (projects.created_by = :userId)
+router.get('/created-by/:userId', requireAuth, projectController.listProjectsCreatedByUser);
+// Preferred: pass userId in URL so backend can create project_members row
+router.post('/:userId', requireAuth, projectController.createProject);
+// Backwards compatible: if userId is not provided, we fall back to req.user.id
+router.post('/', requireAuth, projectController.createProject);
 
 module.exports = router;
+
 
 

@@ -1,27 +1,88 @@
-import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { StatsCard, DashboardSectionCard } from "../../components";
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import AboutOrganisationPopup from "./AboutOrganisationPopup";
+import {
+  getOrgMembersCount,
+  getOrgProjectsCount,
+  getOrgTasksCount,
+  getOrganisationById,
+} from "../../services/orgService";
 
 const OrganisationOverview = () => {
   const t = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAboutPopupOpen, setIsAboutPopupOpen] = useState(false);
+  const [counts, setCounts] = useState({
+    projects: null,
+    members: null,
+    tasks: null,
+  });
+  const [countsError, setCountsError] = useState("");
+  const [org, setOrg] = useState(null);
+  const [orgError, setOrgError] = useState("");
 
-  // Temporary mock data – replace with API data later, ideally fetched using `id`
-  const organisationName = "Quantum Solutions";
+  const organisationName = org?.org_name || "Organisation";
+  const hasAbout =
+    typeof org?.about === "string" &&
+    org.about.trim() !== "" &&
+    org.about.trim() !== "<p><br></p>";
 
-  const stats = [
-    { label: "Total Projects", value: 124, delta: "+5.2%" },
-    { label: "Total Team Members", value: 86, delta: "+2.1%" },
-    { label: "Tasks Completed", value: 1532, delta: "+12.8%" },
-    { label: "Active Tasks", value: 48, delta: "-3.4%" },
-  ];
+  useEffect(() => {
+    const orgId = id;
+    if (!orgId) return;
+
+    let cancelled = false;
+    setCountsError("");
+    setOrgError("");
+
+    (async () => {
+      try {
+        const [orgRes, projectsRes, membersRes, tasksRes] = await Promise.all([
+          getOrganisationById(orgId),
+          getOrgProjectsCount(orgId),
+          getOrgMembersCount(orgId),
+          getOrgTasksCount(orgId),
+        ]);
+
+        if (cancelled) return;
+
+        setOrg(orgRes?.data || null);
+        setCounts({
+          projects: Number(projectsRes?.data?.count ?? 0),
+          members: Number(membersRes?.data?.count ?? 0),
+          tasks: Number(tasksRes?.data?.count ?? 0),
+        });
+      } catch (err) {
+        if (cancelled) return;
+        console.error("Failed to load organisation counts:", err);
+        const msg = err?.message || "Failed to load organisation stats.";
+        setCountsError(msg);
+        setOrgError(msg);
+        setCounts({ projects: null, members: null, tasks: null });
+        setOrg(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const stats = useMemo(
+    () => [
+      { label: "Total Projects", value: counts.projects ?? "—" },
+      { label: "Total Team Members", value: counts.members ?? "—" },
+      { label: "Total Tasks", value: counts.tasks ?? "—" },
+    ],
+    [counts.members, counts.projects, counts.tasks]
+  );
 
   const overviewProjects = [
     { name: "Market Research", due: "Jan 18, 2026", progress: 100 },
@@ -48,10 +109,21 @@ const OrganisationOverview = () => {
             key={stat.label}
             label={stat.label}
             value={stat.value}
-            delta={stat.delta}
           />
         ))}
       </div>
+      {countsError && (
+        <div
+          style={{
+            padding: t.spacing(2),
+            borderRadius: t.radius.card,
+            backgroundColor: "#fee2e2",
+            color: "#b91c1c",
+          }}
+        >
+          {countsError}
+        </div>
+      )}
 
       {/* About Section */}
       <DashboardSectionCard
@@ -60,21 +132,33 @@ const OrganisationOverview = () => {
         onAction={() => setIsAboutPopupOpen(true)}
         actionPlacement="bottom-right"
       >
-        <p
-          style={{
-            margin: 0,
-            marginBottom: t.spacing(2),
-            color: t.colors.textBodyDark,
-            lineHeight: 1.6,
-            fontSize: t.font.size.md,
-          }}
-        >
-          Quantum Solutions is a forward-thinking AI and software engineering
-          company specializing in intelligent automation and data-driven
-          enterprise solutions. Our mission is to empower organizations with
-          cutting-edge technology that simplifies workflows, enhances
-          collaboration, and drives measurable impact.
-        </p>
+        {hasAbout ? (
+          <div
+            style={{
+              margin: 0,
+              marginBottom: t.spacing(2),
+              color: t.colors.textBodyDark,
+              lineHeight: 1.6,
+              fontSize: t.font.size.md,
+              maxHeight: "110px",
+              overflow: "hidden",
+            }}
+            // Quill stores HTML; we render it as-is for rich text preview.
+            dangerouslySetInnerHTML={{ __html: org.about }}
+          />
+        ) : (
+          <p
+            style={{
+              margin: 0,
+              marginBottom: t.spacing(2),
+              color: t.colors.textMutedDark,
+              lineHeight: 1.6,
+              fontSize: t.font.size.md,
+            }}
+          >
+            No description provided.
+          </p>
+        )}
       </DashboardSectionCard>
 
       {/* Bottom Row: Recent Projects & Activity Feed */}
@@ -226,6 +310,20 @@ const OrganisationOverview = () => {
         isOpen={isAboutPopupOpen}
         onClose={() => setIsAboutPopupOpen(false)}
         organisationName={organisationName}
+        descriptionHtml={org?.about || ""}
+        email={org?.email || ""}
+        contactNumber={org?.phone || ""}
+        address={[
+          org?.address_line_1,
+          org?.address_line_2,
+          org?.city,
+          org?.state,
+          org?.postal_code,
+          org?.country,
+        ]
+          .filter(Boolean)
+          .join(", ")}
+        error={orgError}
       />
     </div>
   );
@@ -241,7 +339,11 @@ const OrganisationOverview = () => {
           style={{ width: 16, height: 16 }}
         />
       }
-      onPrimaryAction={() => navigate(`/organisations/${id}/projects/create`)}
+      onPrimaryAction={() =>
+        navigate(`/organisations/${id}/projects/create`, {
+          state: { from: `${location.pathname}${location.search}` },
+        })
+      }
       searchPlaceholder="Search project, tasks, or members..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}

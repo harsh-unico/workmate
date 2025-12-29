@@ -37,10 +37,34 @@ async function updatePasswordHashByEmail(email, passwordHash) {
   return User.RowSchema.parse(data);
 }
 
+async function searchByEmail(query, { limit = 10 } = {}) {
+  const q = query ? String(query).trim() : '';
+  if (!q) return [];
+
+  const safeLimit = Number.isFinite(Number(limit)) ? Math.max(1, Math.min(20, Number(limit))) : 10;
+
+  // Only select safe fields (never return password_hash).
+  const { data, error } = await db
+    .from(User.TABLE)
+    .select('id,email,name,profile_image_url')
+    .ilike('email', `%${q}%`)
+    .order('email', { ascending: true })
+    .limit(safeLimit);
+
+  if (error) throw error;
+  return (data || []).map((row) => ({
+    id: row.id,
+    email: row.email,
+    name: row.name,
+    profile_image_url: row.profile_image_url
+  }));
+}
+
 module.exports = {
   ...base,
   findByEmail,
-  updatePasswordHashByEmail
+  updatePasswordHashByEmail,
+  searchByEmail
 };
 
 

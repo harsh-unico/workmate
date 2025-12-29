@@ -20,7 +20,7 @@ const adminAuth = supabaseAdmin;
 
 // Simple in-memory OTP store for signup flow.
 // In production, consider persisting this in a dedicated table.
-const signupOtps = new Map(); // key: email, value: { otp, expiresAt, password, name }
+const signupOtps = new Map(); // key: email, value: { otp, expiresAt, password, name, isAdmin }
 
 function getMailer() {
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
@@ -42,7 +42,7 @@ function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function sendSignupOtp({ email, password, name }) {
+async function sendSignupOtp({ email, password, name, isAdmin }) {
   const existingUser = await userRepository.findByEmail(email);
   if (existingUser) {
     throw new Error('User with this email already exists');
@@ -51,7 +51,7 @@ async function sendSignupOtp({ email, password, name }) {
   const otp = generateOtp();
   const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-  signupOtps.set(email, { otp, expiresAt, password, name });
+  signupOtps.set(email, { otp, expiresAt, password, name, isAdmin: !!isAdmin });
 
   const transporter = getMailer();
   await transporter.sendMail({
@@ -104,7 +104,7 @@ async function verifySignupOtp({ email, otp }) {
     profile_image_url: null,
     status: USER_STATUS.ACTIVE,
     updated_at: null,
-    is_admin: false
+    is_admin: !!entry.isAdmin
   });
 
   signupOtps.delete(email);
@@ -133,6 +133,12 @@ async function login({ email, password }) {
   }
 
   const userRecord = await userRepository.findByEmail(email);
+
+  if (!userRecord) {
+    const notFoundError = new Error('User profile not found');
+    notFoundError.statusCode = 404;
+    throw notFoundError;
+  }
 
   return {
     message: 'Login successful',

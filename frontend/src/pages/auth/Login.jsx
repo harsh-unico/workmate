@@ -14,6 +14,7 @@ import { useTheme } from '../../context/theme'
 import { useForm } from '../../hooks/useForm'
 import { validateEmail, validatePassword } from '../../validators'
 import { useAuth } from '../../hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../../utils/constants'
 import logo from '../../assets/icons/logo.png'
 import loginBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
@@ -21,6 +22,7 @@ import loginBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Mo
 const Login = () => {
   const t = useTheme()
   const { login } = useAuth()
+  const navigate = useNavigate()
 
   // Form validators
   const validators = {
@@ -35,9 +37,8 @@ const Login = () => {
         email: values.email,
         password: values.password,
       })
-      // Redirect will be handled by router/auth context
-      // For now, just log success
-      console.log('Login successful')
+      // On successful login, navigate to dashboard
+      navigate(ROUTES.DASHBOARD)
     } catch (error) {
       throw error
     }
@@ -61,10 +62,14 @@ const Login = () => {
     handleLogin
   )
 
+  // Ignore submit-level errors when determining if the button should be enabled
+  const { submit: _submitError, ...fieldErrors } = errors
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0
+
   const isFormValid =
     values.email.trim() !== '' &&
     values.password.trim() !== '' &&
-    Object.keys(errors).length === 0
+    !hasFieldErrors
 
   return (
     <AuthCard backgroundVideo={loginBackgroundVideo} dimBackground={false}>

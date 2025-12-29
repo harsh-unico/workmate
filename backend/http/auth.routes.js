@@ -3,6 +3,7 @@
 const express = require('express');
 
 const authController = require('../controllers/authController');
+const { requireAuth } = require('../middleware/auth');
 const {
   signupValidator,
   sendOtpValidator,
@@ -32,6 +33,8 @@ router.post(
   handleValidation,
   authController.resetPassword
 );
+router.post('/logout', authController.logout);
+router.get('/me', requireAuth, authController.me);
 
 module.exports = router;
 

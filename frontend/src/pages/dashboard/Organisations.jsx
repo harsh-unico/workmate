@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { DashboardLayout } from "../../layouts";
 import {
   OrganisationCard,
@@ -7,52 +7,55 @@ import {
   PrimaryButton,
   ProfileDropdown,
 } from "../../components";
+import { useAuth } from "../../hooks";
 import { useTheme } from "../../context/theme";
 import { ROUTES } from "../../utils/constants";
 import addIcon from "../../assets/icons/addIcon.png";
 import sampleProfile from "../../assets/images/sampleProfile.png";
+import { getOrganisations } from "../../services/orgService";
 
 const Organisations = () => {
   const t = useTheme();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [organisations, setOrganisations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Dummy data - will be replaced with API data later
-  const organisations = [
-    {
-      id: 1,
-      name: "Quantum Solutions",
-      hasLogo: false,
-      folders: 10,
-      members: 10,
-      projects: 10,
-    },
-    {
-      id: 2,
-      name: "Quantum Solutions",
-      hasLogo: true,
-      folders: 10,
-      members: 10,
-      projects: 10,
-    },
-    {
-      id: 3,
-      name: "Quantum Solutions",
-      hasLogo: true,
-      folders: 10,
-      members: 10,
-      projects: 10,
-    },
-    {
-      id: 4,
-      name: "Quantum Solutions",
-      hasLogo: true,
-      folders: 10,
-      members: 10,
-      projects: 10,
-    },
-  ];
+  useEffect(() => {
+    const loadOrganisations = async () => {
+      // Wait for auth to resolve so we have the login userId when available
+      if (isAuthLoading) return;
+
+      setIsLoading(true);
+      setError("");
+      try {
+        const response = await getOrganisations();
+        // Backend returns { data: [...] }
+        const list = Array.isArray(response?.data) ? response.data : [];
+        // Normalise into shape expected by OrganisationCard
+        const mapped = list.map((org) => ({
+          id: org.id,
+          name: org.org_name,
+          hasLogo: false,
+          folders: 0,
+          members: 0,
+          projects: 0,
+        }));
+        setOrganisations(mapped);
+      } catch (err) {
+        console.error("Failed to load organisations:", err);
+        setError(err.message || "Failed to load organisations.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadOrganisations();
+  }, [isAuthLoading, user?.id]);
 
   const filteredOrganisations = organisations.filter((org) =>
     org.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -144,24 +147,45 @@ const Organisations = () => {
                 style={{ width: 16, height: 16 }}
               />
             }
-            onClick={() => navigate(ROUTES.CREATE_ORGANISATION)}
+            onClick={() =>
+              navigate(ROUTES.CREATE_ORGANISATION, {
+                state: { from: `${location.pathname}${location.search}` },
+              })
+            }
           >
             Create Organisation
           </PrimaryButton>
         </div>
 
         {/* Organisations Grid */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: t.spacing(4),
-          }}
-        >
-          {filteredOrganisations.map((org) => (
-            <OrganisationCard key={org.id} organisation={org} />
-          ))}
-        </div>
+        {error && (
+          <div
+            style={{
+              marginBottom: t.spacing(4),
+              padding: t.spacing(2),
+              borderRadius: t.radius.card,
+              backgroundColor: "#fee2e2",
+              color: "#b91c1c",
+            }}
+          >
+            {error}
+          </div>
+        )}
+        {isLoading ? (
+          <div>Loading organisations...</div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: t.spacing(4),
+            }}
+          >
+            {filteredOrganisations.map((org) => (
+              <OrganisationCard key={org.id} organisation={org} />
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

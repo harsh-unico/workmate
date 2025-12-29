@@ -8,6 +8,7 @@ import {
   AuthButton,
   ErrorMessage,
   FieldError,
+  TextField,
 } from '../../components'
 import { useTheme } from '../../context/theme'
 import { useForm } from '../../hooks/useForm'
@@ -20,8 +21,21 @@ import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Mot
 const ResetPassword = () => {
   const t = useTheme()
   const [successMessage, setSuccessMessage] = useState('')
+  const [errorMessage, setErrorMessage] = useState('')
 
   const validators = {
+    email: (value) => {
+      if (!value || value.trim() === '') {
+        return {
+          isValid: false,
+          error: 'Please enter your email',
+        }
+      }
+      return {
+        isValid: true,
+        error: '',
+      }
+    },
     newPassword: (value) => validatePassword(value, { minLength: 6 }),
     confirmPassword: (value, allValues) => {
       if (!value || value.trim() === '') {
@@ -47,14 +61,29 @@ const ResetPassword = () => {
 
   const handleResetPassword = async (values) => {
     setSuccessMessage('')
+    setErrorMessage('')
 
     try {
+      // Supabase typically sends `access_token` in the reset URL; we forward it as `token`
+      const searchParams = new URLSearchParams(window.location.search)
+      const token =
+        searchParams.get('token') ||
+        searchParams.get('access_token') ||
+        ''
+
+      if (!token) {
+        setErrorMessage('Invalid or expired reset link. Please request a new one.')
+        return
+      }
+
       await resetPassword({
-        password: values.newPassword,
+        email: values.email,
+        newPassword: values.newPassword,
+        token,
       })
       setSuccessMessage('Your password has been updated successfully.')
     } catch (error) {
-      throw error
+      setErrorMessage(error.message || 'Failed to reset password.')
     }
   }
 
@@ -68,20 +97,27 @@ const ResetPassword = () => {
     handleSubmit,
   } = useForm(
     {
+      email: '',
       newPassword: '',
       confirmPassword: '',
     },
     {
+      email: (value) => validators.email(value),
       newPassword: (value) => validators.newPassword(value),
       confirmPassword: (value) => validators.confirmPassword(value, values),
     },
     handleResetPassword,
   )
 
+  // Ignore submit-level errors when determining if the button should be enabled
+  const { submit: _submitError, ...fieldErrors } = errors
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0
+
   const isFormValid =
+    values.email.trim() !== '' &&
     values.newPassword.trim() !== '' &&
     values.confirmPassword.trim() !== '' &&
-    Object.keys(errors).length === 0
+    !hasFieldErrors
 
   return (
     <AuthCard backgroundVideo={authBackgroundVideo} dimBackground={false}>
@@ -110,6 +146,21 @@ const ResetPassword = () => {
 
       <ErrorMessage message={errors.submit} style={{ marginBottom: t.spacing(4) }} />
 
+      {errorMessage && (
+        <div
+          style={{
+            marginBottom: t.spacing(4),
+            padding: t.spacing(2),
+            borderRadius: t.radius.input,
+            backgroundColor: t.colors.danger + '20',
+            color: t.colors.danger,
+            fontSize: t.font.size.sm,
+          }}
+        >
+          {errorMessage}
+        </div>
+      )}
+
       {successMessage && (
         <div
           style={{
@@ -126,6 +177,20 @@ const ResetPassword = () => {
       )}
 
       <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: t.spacing(3) }}>
+          <Label htmlFor="email">Email</Label>
+          <TextField
+            id="email"
+            type="email"
+            placeholder="Enter your email"
+            value={values.email}
+            onChange={(e) => handleChange('email', e.target.value)}
+            onBlur={() => handleBlur('email')}
+            error={touched.email && errors.email}
+          />
+          <FieldError error={touched.email ? errors.email : null} />
+        </div>
+
         <div style={{ marginBottom: t.spacing(3) }}>
           <Label htmlFor="newPassword">New Password</Label>
           <PasswordField

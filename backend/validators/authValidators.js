@@ -18,7 +18,12 @@ const otpField = body('otp')
 
 const tokenField = body('token').notEmpty().withMessage('Token is required');
 
-const signupValidator = [emailField, passwordField, body('name').optional().isString()];
+const signupValidator = [
+  emailField,
+  passwordField,
+  body('name').optional().isString(),
+  body('isAdmin').optional().isBoolean().withMessage('isAdmin must be a boolean')
+];
 
 const sendOtpValidator = signupValidator;
 

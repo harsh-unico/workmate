@@ -7,7 +7,6 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import Organisations from "./pages/dashboard/Organisations";
 import CreateOrganisation from "./pages/dashboard/CreateOrganisation";
-import EmployeeDashboard from "./pages/employeeDashboard/EmployeeDashboard";
 import OrganisationOverview from "./pages/organisation/Overview";
 import OrganisationProjects from "./pages/organisation/Projects";
 import CreateProject from "./pages/organisation/CreateProject";
@@ -22,6 +21,7 @@ import CreateTask from "./pages/project/CreateTask";
 import EditTask from "./pages/project/EditTask";
 import TaskDetails from "./pages/project/TaskDetails";
 import { ROUTES } from "./utils/constants";
+import { PrivateRoute } from "./routes";
 
 function App() {
   return (
@@ -34,71 +34,137 @@ function App() {
         <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
         <Route path={ROUTES.RESET_PASSWORD} element={<ResetPassword />} />
 
-        {/* Dashboard-level */}
-        {/* Route /dashboard to employee dashboard view */}
-        <Route path={ROUTES.DASHBOARD} element={<EmployeeDashboard />} />
+        {/* Dashboard-level (protected) */}
+        {/* Route /dashboard to Organisations now that standalone dashboard page is removed */}
         <Route
-          path={ROUTES.EMPLOYEE_DASHBOARD}
-          element={<EmployeeDashboard />}
+          path={ROUTES.DASHBOARD}
+          element={
+            <PrivateRoute>
+              <Organisations />
+            </PrivateRoute>
+          }
         />
-        <Route path={ROUTES.ORGANISATIONS} element={<Organisations />} />
+        <Route
+          path={ROUTES.ORGANISATIONS}
+          element={
+            <PrivateRoute>
+              <Organisations />
+            </PrivateRoute>
+          }
+        />
         <Route
           path={ROUTES.CREATE_ORGANISATION}
-          element={<CreateOrganisation />}
+          element={
+            <PrivateRoute>
+              <CreateOrganisation />
+            </PrivateRoute>
+          }
         />
 
-        {/* Organisation detail sub-pages */}
+        {/* Organisation detail sub-pages (protected) */}
         <Route
           path="/organisations/:id/overview"
-          element={<OrganisationOverview />}
+          element={
+            <PrivateRoute>
+              <OrganisationOverview />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects"
-          element={<OrganisationProjects />}
+          element={
+            <PrivateRoute>
+              <OrganisationProjects />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/:projectId/overview"
-          element={<ProjectOverview />}
+          element={
+            <PrivateRoute>
+              <ProjectOverview />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/:projectId/tasks"
-          element={<ProjectTasks />}
+          element={
+            <PrivateRoute>
+              <ProjectTasks />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/:projectId/tasks/:taskId"
-          element={<TaskDetails />}
+          element={
+            <PrivateRoute>
+              <TaskDetails />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/:projectId/tasks/create"
-          element={<CreateTask />}
+          element={
+            <PrivateRoute>
+              <CreateTask />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/:projectId/tasks/:taskId/edit"
-          element={<EditTask />}
+          element={
+            <PrivateRoute>
+              <EditTask />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/:projectId/notifications"
-          element={<ProjectNotifications />}
+          element={
+            <PrivateRoute>
+              <ProjectNotifications />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/:projectId/settings"
-          element={<ProjectSettings />}
+          element={
+            <PrivateRoute>
+              <ProjectSettings />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/projects/create"
-          element={<CreateProject />}
+          element={
+            <PrivateRoute>
+              <CreateProject />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/team"
-          element={<OrganisationTeamMembers />}
+          element={
+            <PrivateRoute>
+              <OrganisationTeamMembers />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/reports"
-          element={<OrganisationSummaryReports />}
+          element={
+            <PrivateRoute>
+              <OrganisationSummaryReports />
+            </PrivateRoute>
+          }
         />
         <Route
           path="/organisations/:id/settings"
-          element={<OrganisationSettings />}
+          element={
+            <PrivateRoute>
+              <OrganisationSettings />
+            </PrivateRoute>
+          }
         />
 
         {/* Redirect root and any unknown paths to login */}
