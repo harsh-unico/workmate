@@ -13,6 +13,7 @@ const OrganisationLayout = ({
   showSidebar = true,
   primaryActionLabel,
   primaryActionIcon,
+  primaryActionDisabled = false,
   onPrimaryAction,
   searchPlaceholder,
   searchValue,
@@ -87,7 +88,11 @@ const OrganisationLayout = ({
               )}
             </div>
             {primaryActionLabel && (
-              <PrimaryButton icon={primaryActionIcon} onClick={onPrimaryAction}>
+              <PrimaryButton
+                icon={primaryActionIcon}
+                onClick={onPrimaryAction}
+                disabled={primaryActionDisabled}
+              >
                 {primaryActionLabel}
               </PrimaryButton>
             )}

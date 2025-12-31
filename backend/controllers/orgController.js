@@ -30,35 +30,37 @@ async function requireOrgMember(req, orgId) {
     throw error;
   }
 
-  const orgMember = await orgMemberRepository.findOne({
-    org_id: String(orgId),
-    user_id: String(userId)
-  });
-  if (!orgMember) {
-    const error = new Error('Forbidden');
-    error.statusCode = 403;
-    throw error;
-  }
-}
-
-async function requireOrgAdmin(req, orgId) {
-  const userId = req.user && req.user.id ? String(req.user.id) : null;
-  if (!userId) {
-    const error = new Error('Not authenticated');
-    error.statusCode = 401;
-    throw error;
-  }
-
   const membership = await orgMemberRepository.findOne({
     org_id: String(orgId),
     user_id: String(userId)
   });
 
-  if (!membership || !membership.is_admin) {
+  if (!membership) {
     const error = new Error('Forbidden');
     error.statusCode = 403;
     throw error;
   }
+
+  return membership;
+}
+
+async function requireOrgAdmin(req, orgId) {
+  const membership = await requireOrgMember(req, orgId);
+  if (!membership.is_admin) {
+    const error = new Error('Forbidden');
+    error.statusCode = 403;
+    throw error;
+  }
+  return membership;
+}
+
+function normalizeRichTextHtml(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const v = String(value);
+  const trimmed = v.trim();
+  if (!trimmed || trimmed === '<p><br></p>') return null;
+  return v;
 }
 
 function listOrganisations(req, res) {
@@ -141,13 +143,9 @@ function createOrganisation(req, res) {
       throw error;
     }
 
-    const richAbout =
-      typeof description === 'string'
-        ? description
-        : (typeof about === 'string' ? about : null);
-
-    // eslint-disable-next-line no-console
-    console.log('[orgController.createOrganisation] incoming about length:', richAbout ? richAbout.length : 0);
+    const richAbout = normalizeRichTextHtml(
+      typeof description === 'string' ? description : (typeof about === 'string' ? about : undefined)
+    );
 
     const payload = {
       org_name: organisationName,
@@ -159,13 +157,10 @@ function createOrganisation(req, res) {
       state: state || null,
       city: city || null,
       postal_code: pincode || null,
-      // Store Quill HTML (rich text) as-is
-      about: richAbout
+      about: richAbout === undefined ? null : richAbout
     };
 
     const created = await orgRepository.insertOne(payload);
-    // eslint-disable-next-line no-console
-    console.log('[orgController.createOrganisation] saved about length:', created && created.about ? created.about.length : 0);
 
     // Create org member entry for the user who created this organisation
     const orgMember = await orgMemberRepository.insertOne({
@@ -175,55 +170,6 @@ function createOrganisation(req, res) {
     });
 
     return { data: created, org_member: orgMember };
-  }, req, res);
-}
-
-function getOrgProjectCount(req, res) {
-  return handle(async () => {
-    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
-    if (!orgId) {
-      const error = new Error('orgId is required');
-      error.statusCode = 400;
-      throw error;
-    }
-
-    await requireOrgMember(req, orgId);
-
-    const count = await projectRepository.countByOrgId(orgId);
-    return { data: { orgId, count } };
-  }, req, res);
-}
-
-function getOrgMemberCount(req, res) {
-  return handle(async () => {
-    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
-    if (!orgId) {
-      const error = new Error('orgId is required');
-      error.statusCode = 400;
-      throw error;
-    }
-
-    await requireOrgMember(req, orgId);
-
-    const count = await orgMemberRepository.countByOrgId(orgId);
-    return { data: { orgId, count } };
-  }, req, res);
-}
-
-function getOrgTaskCount(req, res) {
-  return handle(async () => {
-    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
-    if (!orgId) {
-      const error = new Error('orgId is required');
-      error.statusCode = 400;
-      throw error;
-    }
-
-    await requireOrgMember(req, orgId);
-
-    const projectIds = await projectRepository.findIdsByOrgId(orgId);
-    const count = await taskRepository.countByProjectIds(projectIds);
-    return { data: { orgId, count } };
   }, req, res);
 }
 
@@ -249,6 +195,107 @@ function getOrganisationById(req, res) {
   }, req, res);
 }
 
+function updateOrganisation(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireOrgAdmin(req, orgId);
+
+    const {
+      organisationName,
+      email,
+      contactNumber,
+      description,
+      about,
+      address,
+      country,
+      state,
+      city,
+      pincode
+    } = req.body || {};
+
+    const payload = {
+      ...(organisationName !== undefined ? { org_name: organisationName } : {}),
+      ...(email !== undefined ? { email: email || null } : {}),
+      ...(contactNumber !== undefined ? { phone: contactNumber || null } : {}),
+      ...(address !== undefined ? { address_line_1: address || null } : {}),
+      ...(country !== undefined ? { country: country || null } : {}),
+      ...(state !== undefined ? { state: state || null } : {}),
+      ...(city !== undefined ? { city: city || null } : {}),
+      ...(pincode !== undefined ? { postal_code: pincode || null } : {}),
+    };
+
+    const nextAbout = normalizeRichTextHtml(
+      description !== undefined
+        ? description
+        : (about !== undefined ? about : undefined)
+    );
+    if (nextAbout !== undefined) {
+      payload.about = nextAbout;
+    }
+
+    const updated = await orgRepository.updateById(orgId, payload);
+    if (!updated) {
+      const error = new Error('Organisation not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    return { data: updated };
+  }, req, res);
+}
+
+function getOrgProjectCount(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireOrgMember(req, orgId);
+    const count = await projectRepository.countByOrgId(orgId);
+    return { data: { orgId, count } };
+  }, req, res);
+}
+
+function getOrgMemberCount(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireOrgMember(req, orgId);
+    const count = await orgMemberRepository.countByOrgId(orgId);
+    return { data: { orgId, count } };
+  }, req, res);
+}
+
+function getOrgTaskCount(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireOrgMember(req, orgId);
+    const projectIds = await projectRepository.findIdsByOrgId(orgId);
+    const count = await taskRepository.countByProjectIds(projectIds);
+    return { data: { orgId, count } };
+  }, req, res);
+}
+
 function listOrgProjects(req, res) {
   return handle(async () => {
     const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
@@ -259,7 +306,6 @@ function listOrgProjects(req, res) {
     }
 
     await requireOrgMember(req, orgId);
-
     const projects = await projectRepository.findManyByOrgId(orgId);
     return { data: projects };
   }, req, res);
@@ -274,7 +320,6 @@ function listOrgMembersDetailed(req, res) {
       throw error;
     }
 
-    // Any org member can view members list
     await requireOrgMember(req, orgId);
 
     const memberships = await orgMemberRepository.findMany({ org_id: String(orgId) });
@@ -282,17 +327,17 @@ function listOrgMembersDetailed(req, res) {
     const users = await userRepository.findManyByIds(userIds);
     const usersById = new Map(users.map((u) => [String(u.id), u]));
 
-    const data = memberships.map((m) => ({
-      id: m.id, // org_members row id
-      org_id: m.org_id,
-      user_id: m.user_id,
-      department: m.department || null,
-      is_admin: !!m.is_admin,
-      joined_at: m.joined_at || null,
-      user: usersById.get(String(m.user_id)) || null
-    }));
-
-    return { data };
+    return {
+      data: memberships.map((m) => ({
+        id: m.id,
+        org_id: m.org_id,
+        user_id: m.user_id,
+        department: m.department || null,
+        is_admin: !!m.is_admin,
+        joined_at: m.joined_at || null,
+        user: usersById.get(String(m.user_id)) || null
+      }))
+    };
   }, req, res);
 }
 
@@ -363,10 +408,11 @@ module.exports = {
   listAdminOrganisations,
   listAdminOrganisationsForUser,
   createOrganisation,
+  getOrganisationById,
+  updateOrganisation,
   getOrgProjectCount,
   getOrgMemberCount,
   getOrgTaskCount,
-  getOrganisationById,
   listOrgProjects,
   listOrgMembersDetailed,
   inviteOrgMembers

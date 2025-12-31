@@ -67,5 +67,10 @@ export const inviteOrganisationMembers = async (orgId, emails) => {
   )
 }
 
+export const updateOrganisation = async (orgId, payload) => {
+  if (!orgId) throw new Error('orgId is required')
+  return apiClient.patch(`${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}`, payload)
+}
+
 
 
