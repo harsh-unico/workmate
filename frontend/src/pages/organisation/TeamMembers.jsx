@@ -113,7 +113,7 @@ const OrganisationTeamMembers = () => {
     }
     try {
       await inviteOrganisationMembers(id, list);
-      setIsInviteOpen(false);
+    setIsInviteOpen(false);
       await loadMembers();
     } catch (err) {
       console.error("Failed to invite members:", err);

@@ -134,12 +134,12 @@ const OrganisationOverview = () => {
       >
         {hasAbout ? (
           <div
-            style={{
-              margin: 0,
-              marginBottom: t.spacing(2),
-              color: t.colors.textBodyDark,
-              lineHeight: 1.6,
-              fontSize: t.font.size.md,
+          style={{
+            margin: 0,
+            marginBottom: t.spacing(2),
+            color: t.colors.textBodyDark,
+            lineHeight: 1.6,
+            fontSize: t.font.size.md,
               maxHeight: "110px",
               overflow: "hidden",
             }}
@@ -157,7 +157,7 @@ const OrganisationOverview = () => {
             }}
           >
             No description provided.
-          </p>
+        </p>
         )}
       </DashboardSectionCard>
 

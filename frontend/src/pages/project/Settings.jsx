@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import {
@@ -8,6 +8,8 @@ import {
 } from "../../components";
 import { DangerZoneSection } from "../../components";
 import { useTheme } from "../../context/theme";
+import { getOrganisationById } from "../../services/orgService";
+import { getProjectById } from "../../services/projectService";
 
 const initialFormData = {
   projectName: "Project Alpha",
@@ -22,23 +24,40 @@ const initialFormData = {
 
 const ProjectSettings = () => {
   const t = useTheme();
-  const { projectId } = useParams();
+  const { id, projectId } = useParams();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState(initialFormData);
 
-  const organisationName = "Quantum Solutions";
-  const projectNameFromState = location.state?.projectName;
-  const derivedProjectName =
-    projectId && typeof projectId === "string"
-      ? projectId
-          .split("-")
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" ")
-      : "Project Alpha";
+  const [orgName, setOrgName] = useState("");
+  const [projName, setProjName] = useState(location.state?.projectName || "");
 
-  const projectName = projectNameFromState || derivedProjectName;
-  const headerTitle = `${organisationName} / ${projectName} /`;
+  useEffect(() => {
+    const orgId = id;
+    const pid = projectId;
+    if (!orgId || !pid) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [orgRes, projRes] = await Promise.all([
+          getOrganisationById(orgId),
+          getProjectById(pid),
+        ]);
+        if (cancelled) return;
+        setOrgName(orgRes?.data?.org_name || "");
+        setProjName(projRes?.data?.name || "");
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, projectId]);
+
+  const headerTitle = `${orgName || "Organisation"} / ${projName || "Project"} /`;
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({
@@ -53,7 +72,7 @@ const ProjectSettings = () => {
     }
     // Placeholder for save logic
     // eslint-disable-next-line no-console
-    console.log("Save project settings for", projectName, formData);
+    console.log("Save project settings for", projName || projectId, formData);
   };
 
   const handleCancel = () => {
@@ -63,7 +82,7 @@ const ProjectSettings = () => {
   const handleDeleteProject = () => {
     // Placeholder for delete logic
     // eslint-disable-next-line no-console
-    console.log("Delete project:", projectName);
+    console.log("Delete project:", projName || projectId);
   };
 
   return (

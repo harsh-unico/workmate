@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import {
@@ -9,6 +9,7 @@ import {
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import { createProject } from "../../services/projectService";
+import { getOrganisationById, getOrganisationMembers } from "../../services/orgService";
 
 const readRichTextHtml = (rootId) => {
   try {
@@ -40,6 +41,49 @@ const CreateProject = () => {
   const [formData, setFormData] = useState(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [orgName, setOrgName] = useState("Create Project");
+  const [memberOptions, setMemberOptions] = useState([]);
+
+  useEffect(() => {
+    const orgId = id;
+    if (!orgId) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [orgRes, membersRes] = await Promise.all([
+          getOrganisationById(orgId),
+          getOrganisationMembers(orgId),
+        ]);
+        if (cancelled) return;
+
+        setOrgName(orgRes?.data?.org_name || "Create Project");
+
+        const list = Array.isArray(membersRes?.data) ? membersRes.data : [];
+        const mapped = list
+          .map((m) => {
+            const u = m?.user || null;
+            if (!u?.email) return null;
+            return {
+              id: u.id,
+              email: u.email,
+              name: u.name || "",
+            };
+          })
+          .filter(Boolean);
+        setMemberOptions(mapped);
+      } catch (e) {
+        if (!cancelled) {
+          setOrgName("Create Project");
+          setMemberOptions([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({
@@ -72,11 +116,13 @@ const CreateProject = () => {
           about: descriptionHtml,
           startDate: formData.startDate || null,
           endDate: formData.endDate || null,
+          // Selected org members (emails) to be added to project_members
+          teamMemberEmails: formData.teamMembers || [],
         };
         // eslint-disable-next-line no-console
         console.log("Create project payload:", payload);
         await createProject(payload);
-        navigate(returnTo || `/organisations/${id}/projects`);
+    navigate(returnTo || `/organisations/${id}/projects`);
       } catch (err) {
         console.error("Failed to create project:", err);
         setError(err?.message || "Failed to create project.");
@@ -94,13 +140,17 @@ const CreateProject = () => {
 
   return (
     <OrganisationLayout
-      organisationName="Create Project"
+      organisationName={orgName || "Create Project"}
       primaryActionLabel="Create Project"
       onPrimaryAction={handleSubmit}
     >
       <DashboardSectionCard title="New Project Details">
         <form onSubmit={handleSubmit}>
-          <ProjectForm formData={formData} onFieldChange={handleFieldChange} />
+          <ProjectForm
+            formData={formData}
+            onFieldChange={handleFieldChange}
+            memberOptions={memberOptions}
+          />
 
           {error && (
             <div

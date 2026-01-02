@@ -2,6 +2,7 @@
 
 const { PROJECT_MEMBER_ROLE } = require('../enums');
 const projectMemberRepository = require('../repositories/projectMemberRepository');
+const userRepository = require('../repositories/userRepository');
 
 async function handle(controllerFn, req, res) {
   try {
@@ -30,6 +31,28 @@ async function requireProjectAdmin(req, projectId) {
   const roles = [PROJECT_MEMBER_ROLE.OWNER, PROJECT_MEMBER_ROLE.MANAGER];
   const adminProjectIds = await projectMemberRepository.findAdminProjectIdsForUser(userId, { roles });
   if (!adminProjectIds.includes(String(projectId))) {
+    const error = new Error('Forbidden');
+    error.statusCode = 403;
+    throw error;
+  }
+}
+
+async function requireProjectMember(req, projectId) {
+  const userId = req.user && req.user.id ? String(req.user.id) : null;
+  if (!userId) {
+    const error = new Error('Not authenticated');
+    error.statusCode = 401;
+    throw error;
+  }
+  const pid = projectId ? String(projectId) : null;
+  if (!pid) {
+    const error = new Error('projectId is required');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const rows = await projectMemberRepository.findMany({ project_id: pid, user_id: userId });
+  if (!rows || rows.length === 0) {
     const error = new Error('Forbidden');
     error.statusCode = 403;
     throw error;
@@ -71,6 +94,20 @@ function listProjectMembers(req, res) {
     if (role) filters.role = String(role);
 
     const rows = await projectMemberRepository.findMany(filters);
+
+    // If listing by project, ensure requester is a member and enrich with user details
+    if (projectId) {
+      await requireProjectMember(req, projectId);
+      const userIds = Array.from(new Set((rows || []).map((r) => r.user_id).filter(Boolean)));
+      const users = await userRepository.findManyByIds(userIds);
+      const userById = new Map((users || []).map((u) => [String(u.id), u]));
+      const enriched = (rows || []).map((r) => ({
+        ...r,
+        user: userById.get(String(r.user_id)) || null
+      }));
+      return { data: enriched };
+    }
+
     return { data: rows };
   }, req, res);
 }

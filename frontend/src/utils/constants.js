@@ -37,6 +37,13 @@ export const API_ENDPOINTS = {
     LIST: '/projects',
     CREATE: '/projects',
   },
+  PROJECT_MEMBER: {
+    LIST: '/project-members',
+  },
+  TASK: {
+    LIST: '/tasks',
+    CREATE: '/tasks',
+  },
 }
 
 /**

@@ -1,27 +1,46 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { DashboardSectionCard } from "../../components";
 import { useTheme } from "../../context/theme";
+import { getOrganisationById } from "../../services/orgService";
+import { getProjectById } from "../../services/projectService";
 
 const ProjectNotifications = () => {
   const t = useTheme();
-  const { projectId } = useParams();
+  const { id, projectId } = useParams();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const organisationName = "Quantum Solutions";
-  const projectNameFromState = location.state?.projectName;
-  const derivedProjectName =
-    projectId && typeof projectId === "string"
-      ? projectId
-          .split("-")
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" ")
-      : "Project Alpha";
+  const [orgName, setOrgName] = useState("");
+  const [projName, setProjName] = useState(location.state?.projectName || "");
 
-  const projectName = projectNameFromState || derivedProjectName;
-  const headerTitle = `${organisationName} / ${projectName} / Notifications`;
+  useEffect(() => {
+    const orgId = id;
+    const pid = projectId;
+    if (!orgId || !pid) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const [orgRes, projRes] = await Promise.all([
+          getOrganisationById(orgId),
+          getProjectById(pid),
+        ]);
+        if (cancelled) return;
+        setOrgName(orgRes?.data?.org_name || "");
+        setProjName(projRes?.data?.name || "");
+      } catch {
+        // ignore
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, projectId]);
+
+  const headerTitle = `${orgName || "Organisation"} / ${projName || "Project"} / Notifications`;
 
   return (
     <OrganisationLayout

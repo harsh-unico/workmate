@@ -1,9 +1,24 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { DashboardSectionCard, PrimaryButton, TaskForm } from "../../components";
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
+import { createTask } from "../../services/taskService";
+import { getOrganisationById } from "../../services/orgService";
+import { getProjectById } from "../../services/projectService";
+import { listProjectMembers } from "../../services/projectMemberService";
+
+const readRichTextHtml = (rootId) => {
+  try {
+    const el = document.querySelector(`#${rootId} .ql-editor`);
+    const html = el?.innerHTML || "";
+    if (!html || html === "<p><br></p>") return "";
+    return html;
+  } catch {
+    return "";
+  }
+};
 
 const initialFormData = {
   taskName: "",
@@ -24,19 +39,67 @@ const CreateTask = () => {
   const location = useLocation();
   const returnTo = location.state?.from;
   const [formData, setFormData] = useState(initialFormData);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
-  const organisationName = "Quantum Solutions";
-  const projectNameFromState = location.state?.projectName;
-  const derivedProjectName =
-    projectId && typeof projectId === "string"
-      ? projectId
-          .split("-")
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" ")
-      : "Project Alpha";
+  const [orgName, setOrgName] = useState("");
+  const [projName, setProjName] = useState(location.state?.projectName || "");
+  const [memberOptions, setMemberOptions] = useState([]);
 
-  const projectName = projectNameFromState || derivedProjectName;
+  useEffect(() => {
+    const orgId = id;
+    const pid = projectId;
+    if (!orgId || !pid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [orgRes, projRes, membersRes] = await Promise.all([
+          getOrganisationById(orgId),
+          getProjectById(pid),
+          listProjectMembers({ projectId: pid }),
+        ]);
+        if (cancelled) return;
+        setOrgName(orgRes?.data?.org_name || "");
+        setProjName(projRes?.data?.name || "");
+
+        const rows = Array.isArray(membersRes?.data) ? membersRes.data : [];
+        const options = rows
+          .map((r) => r?.user)
+          .filter((u) => u && u.email)
+          .map((u) => ({ id: u.id, email: u.email, name: u.name }));
+        setMemberOptions(options);
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, projectId]);
+
+  const breadcrumbLabel = `${orgName || "Organisation"} / ${projName || "Project"} /`;
   const headerTitle = "Create New Task";
+
+  const isValidEmail = (value) =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+
+  const toTaskPriorityEnum = (v) => {
+    const s = String(v || "").trim().toLowerCase();
+    if (s === "high") return "high";
+    if (s === "medium") return "medium";
+    if (s === "low") return "low";
+    if (s === "urgent") return "urgent";
+    return s || null;
+  };
+
+  const toTaskStatusEnum = (v) => {
+    const s = String(v || "").trim().toLowerCase();
+    if (s === "to do" || s === "todo") return "todo";
+    if (s === "in progress" || s === "in_progress") return "in_progress";
+    if (s === "in review" || s === "in_review") return "in_progress";
+    if (s === "done") return "done";
+    return s ? s.replace(/\s+/g, "_") : null;
+  };
 
   const handleFieldChange = (field, value) => {
     setFormData((prev) => ({
@@ -49,12 +112,73 @@ const CreateTask = () => {
     if (event) {
       event.preventDefault();
     }
-    // TODO: Replace with API call to create a task for this project.
-    // eslint-disable-next-line no-console
-    console.log("Create task for project:", projectName, formData);
+    const submit = async () => {
+      setIsSubmitting(true);
+      setError("");
+      try {
+        // Ensure latest Quill HTML is used
+        const editorHtml = readRichTextHtml("description");
+        const descriptionHtml =
+          typeof formData.description === "string" && formData.description.trim() !== ""
+            ? formData.description
+            : editorHtml;
 
-    // Return to the page this form was opened from (fallback: tasks list)
-    navigate(returnTo || `/organisations/${id}/projects/${projectId}/tasks`);
+        const assigneeEmail =
+          Array.isArray(formData.assignees) && formData.assignees.length > 0
+            ? String(formData.assignees[0] || "").trim()
+            : "";
+
+        if (!String(formData.taskName || "").trim()) {
+          setError("Task Name is required.");
+          return;
+        }
+        if (!descriptionHtml || descriptionHtml === "<p><br></p>") {
+          setError("Description is required.");
+          return;
+        }
+        if (!assigneeEmail || !isValidEmail(assigneeEmail)) {
+          setError("Assignee is required (must be a valid email).");
+          return;
+        }
+        if (!formData.startDate) {
+          setError("Start Date is required.");
+          return;
+        }
+        if (!formData.dueDate) {
+          setError("Due Date is required.");
+          return;
+        }
+        if (!formData.priority) {
+          setError("Priority is required.");
+          return;
+        }
+        if (!formData.status) {
+          setError("Status is required.");
+          return;
+        }
+
+        const payload = {
+          title: formData.taskName,
+          description: descriptionHtml,
+          about: descriptionHtml,
+          status: toTaskStatusEnum(formData.status),
+          priority: toTaskPriorityEnum(formData.priority),
+          dueDate: formData.dueDate || null,
+          projectId: projectId || null,
+          assigneeEmail: assigneeEmail || undefined,
+        };
+
+        await createTask(payload);
+        navigate(returnTo || `/organisations/${id}/projects/${projectId}/tasks`);
+      } catch (err) {
+        console.error("Failed to create task:", err);
+        setError(err?.message || "Failed to create task.");
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
+    submit();
   };
 
   const handleCancel = () => {
@@ -63,7 +187,8 @@ const CreateTask = () => {
 
   return (
     <OrganisationLayout
-      organisationName={headerTitle}
+      organisationName={breadcrumbLabel}
+      pageTitle={headerTitle}
       primaryActionLabel="Create Task"
       onPrimaryAction={handleSubmit}
       searchPlaceholder=""
@@ -79,12 +204,31 @@ const CreateTask = () => {
         }}
       >
         Log a task to organize and prioritize work for{" "}
-        <strong>{organisationName}</strong> / <strong>{projectName}</strong>.
+        <strong>{orgName || "Organisation"}</strong> / <strong>{projName || "Project"}</strong>.
       </p>
 
       <DashboardSectionCard title="">
         <form onSubmit={handleSubmit}>
-          <TaskForm formData={formData} onFieldChange={handleFieldChange} />
+          <TaskForm
+            formData={formData}
+            onFieldChange={handleFieldChange}
+            memberOptions={memberOptions}
+          />
+
+          {error && (
+            <div
+              style={{
+                marginTop: t.spacing(2),
+                marginBottom: t.spacing(2),
+                padding: t.spacing(2),
+                borderRadius: t.radius.card,
+                backgroundColor: "#fee2e2",
+                color: "#b91c1c",
+              }}
+            >
+              {error}
+            </div>
+          )}
 
           <div
             style={{
@@ -98,6 +242,7 @@ const CreateTask = () => {
             <button
               type="button"
               onClick={handleCancel}
+              disabled={isSubmitting}
               style={{
                 padding: `${t.spacing(2.5)} ${t.spacing(6)}`,
                 borderRadius: t.radius.button,
@@ -106,7 +251,8 @@ const CreateTask = () => {
                 color: "#111827",
                 fontFamily: t.font.family,
                 fontSize: t.font.size.md,
-                cursor: "pointer",
+                cursor: isSubmitting ? "not-allowed" : "pointer",
+                opacity: isSubmitting ? 0.7 : 1,
               }}
             >
               Cancel
@@ -114,6 +260,7 @@ const CreateTask = () => {
             <PrimaryButton
               type="submit"
               fullWidth={false}
+              disabled={isSubmitting}
               icon={
                 <img
                   src={addIcon}
@@ -122,7 +269,7 @@ const CreateTask = () => {
                 />
               }
             >
-              Create Task
+              {isSubmitting ? "Creating..." : "Create Task"}
             </PrimaryButton>
           </div>
         </form>

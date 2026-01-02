@@ -34,7 +34,7 @@ const AboutOrganisationPopup = ({
       >
         {error && (
           <div
-            style={{
+          style={{
               marginBottom: t.spacing(3),
               padding: t.spacing(2),
               borderRadius: t.radius.card,
@@ -48,23 +48,23 @@ const AboutOrganisationPopup = ({
 
         {hasDescription ? (
           <div
-            style={{
-              margin: 0,
+          style={{
+            margin: 0,
               marginBottom: t.spacing(3),
-            }}
+          }}
             // Quill stores HTML; we render it as-is for rich text display.
             dangerouslySetInnerHTML={{ __html: descriptionHtml }}
           />
         ) : (
-          <p
-            style={{
-              margin: 0,
-              marginBottom: t.spacing(3),
+        <p
+          style={{
+            margin: 0,
+            marginBottom: t.spacing(3),
               color: t.colors.textMutedDark,
-            }}
-          >
+          }}
+        >
             No description provided.
-          </p>
+        </p>
         )}
 
         <h3
@@ -89,19 +89,19 @@ const AboutOrganisationPopup = ({
           {email ? (
             <CopyableRow copyValue={email} icon="✉">
               {email}
-            </CopyableRow>
+          </CopyableRow>
           ) : null}
 
           {contactNumber ? (
             <CopyableRow copyValue={contactNumber} icon="☎">
               {contactNumber}
-            </CopyableRow>
+          </CopyableRow>
           ) : null}
 
           {address ? (
             <CopyableRow copyValue={address} icon="📍" align="flex-start">
               {address}
-            </CopyableRow>
+          </CopyableRow>
           ) : null}
 
           {!email && !contactNumber && !address ? (

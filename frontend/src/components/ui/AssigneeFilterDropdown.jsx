@@ -7,6 +7,7 @@ const DEFAULT_ASSIGNEES = ["John Doe", "Mark Ross", "Emily"];
 const AssigneeFilterDropdown = ({
   search,
   selected,
+  options,
   onSearchChange,
   onSelectedChange,
 }) => {
@@ -120,7 +121,13 @@ const AssigneeFilterDropdown = ({
               color: t.colors.textBodyDark,
             }}
           >
-            {DEFAULT_ASSIGNEES.map((name) => (
+            {(Array.isArray(options) && options.length ? options : DEFAULT_ASSIGNEES)
+              .filter((name) => {
+                const q = String(search || "").trim().toLowerCase();
+                if (!q) return true;
+                return String(name || "").toLowerCase().includes(q);
+              })
+              .map((name) => (
               <label
                 key={name}
                 style={{ display: "flex", alignItems: "center", gap: 8 }}
@@ -143,6 +150,7 @@ const AssigneeFilterDropdown = ({
 AssigneeFilterDropdown.propTypes = {
   search: PropTypes.string,
   selected: PropTypes.arrayOf(PropTypes.string),
+  options: PropTypes.arrayOf(PropTypes.string),
   onSearchChange: PropTypes.func,
   onSelectedChange: PropTypes.func,
 };
@@ -150,6 +158,7 @@ AssigneeFilterDropdown.propTypes = {
 AssigneeFilterDropdown.defaultProps = {
   search: "",
   selected: [],
+  options: undefined,
   onSearchChange: undefined,
   onSelectedChange: undefined,
 };

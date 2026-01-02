@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { useTheme } from "../../context/theme";
 import { AttachmentUploader, DatePicker, RichTextEditor } from "..";
@@ -26,7 +26,7 @@ const ProjectFormField = ({
   );
 };
 
-const ProjectForm = ({ formData, onFieldChange }) => {
+const ProjectForm = ({ formData, onFieldChange, memberOptions = [] }) => {
   const t = useTheme();
 
   const handleChange = (field) => (event) => {
@@ -38,13 +38,28 @@ const ProjectForm = ({ formData, onFieldChange }) => {
     onFieldChange?.("description", value);
   };
 
-  const handleAddTeamMember = () => {
-    const name = (formData.teamSearch || "").trim();
-    if (!name) return;
+  const selected = formData.teamMembers || [];
 
+  const filteredMemberOptions = useMemo(() => {
+    const q = String(formData.teamSearch || "").trim().toLowerCase();
+    if (!q) return [];
+    const selectedSet = new Set(selected.map((s) => String(s).toLowerCase()));
+    return (memberOptions || [])
+      .filter((m) => m && m.email)
+      .filter((m) => !selectedSet.has(String(m.email).toLowerCase()))
+      .filter((m) => {
+        const hay = `${m.name || ""} ${m.email || ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 8);
+  }, [formData.teamSearch, memberOptions, selected]);
+
+  const addMember = (email) => {
+    const e = String(email || "").trim();
+    if (!e) return;
     const current = formData.teamMembers || [];
-    if (!current.includes(name)) {
-      onFieldChange?.("teamMembers", [...current, name]);
+    if (!current.includes(e)) {
+      onFieldChange?.("teamMembers", [...current, e]);
     }
     onFieldChange?.("teamSearch", "");
   };
@@ -52,7 +67,9 @@ const ProjectForm = ({ formData, onFieldChange }) => {
   const handleTeamSearchKeyDown = (event) => {
     if (event.key === "Enter" || event.key === "Tab" || event.key === ",") {
       event.preventDefault();
-      handleAddTeamMember();
+      if (filteredMemberOptions.length > 0) {
+        addMember(filteredMemberOptions[0].email);
+      }
     } else if (
       event.key === "Backspace" &&
       !formData.teamSearch &&
@@ -172,20 +189,76 @@ const ProjectForm = ({ formData, onFieldChange }) => {
       </div>
 
       <div style={{ marginBottom: t.spacing(4) }}>
-        <ProjectFormField
-          label="Team Members"
-          name="teamSearch"
-          baseInputStyle={baseInputStyle}
-          labelStyle={labelStyle}
-          fieldWrapperStyle={fieldWrapperStyle}
-          inputProps={{
-            type: "text",
-            value: formData.teamSearch,
-            onChange: handleChange("teamSearch"),
-            onKeyDown: handleTeamSearchKeyDown,
-            placeholder: "Search for a member...",
-          }}
-        />
+        <div style={{ position: "relative" }}>
+          <ProjectFormField
+            label="Team Members"
+            name="teamSearch"
+            baseInputStyle={baseInputStyle}
+            labelStyle={labelStyle}
+            fieldWrapperStyle={fieldWrapperStyle}
+            inputProps={{
+              type: "text",
+              value: formData.teamSearch,
+              onChange: handleChange("teamSearch"),
+              onKeyDown: handleTeamSearchKeyDown,
+              placeholder: "Search and select organisation members...",
+              autoComplete: "off",
+            }}
+          />
+          {String(formData.teamSearch || "").trim() && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                left: 0,
+                right: 0,
+                backgroundColor: "#ffffff",
+                border: `1px solid ${t.colors.blackBorder}`,
+                borderRadius: "12px",
+                boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
+                overflow: "hidden",
+                zIndex: 10,
+              }}
+            >
+              {filteredMemberOptions.length === 0 ? (
+                <div
+                  style={{
+                    padding: t.spacing(3),
+                    color: "#6b7280",
+                    fontSize: t.font.size.sm,
+                  }}
+                >
+                  No matching members.
+                </div>
+              ) : (
+                filteredMemberOptions.map((m) => (
+                  <button
+                    key={m.id || m.email}
+                    type="button"
+                    onClick={() => addMember(m.email)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: t.spacing(3),
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontSize: t.font.size.md, color: "#111827" }}>
+                      {m.name || m.email}
+                    </div>
+                    {m.name ? (
+                      <div style={{ fontSize: t.font.size.sm, color: "#6b7280" }}>
+                        {m.email}
+                      </div>
+                    ) : null}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
         <div
           style={{
             marginTop: t.spacing(2),
@@ -232,6 +305,13 @@ ProjectForm.propTypes = {
     attachments: PropTypes.array,
   }).isRequired,
   onFieldChange: PropTypes.func.isRequired,
+  memberOptions: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string,
+      email: PropTypes.string,
+      name: PropTypes.string,
+    })
+  ),
 };
 
 export default ProjectForm;

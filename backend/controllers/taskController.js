@@ -1,6 +1,9 @@
 'use strict';
 
 const taskRepository = require('../repositories/taskRepository');
+const userRepository = require('../repositories/userRepository');
+const projectMemberRepository = require('../repositories/projectMemberRepository');
+const { TASK_PRIORITY, TASK_STATUS } = require('../enums');
 
 async function handle(controllerFn, req, res) {
   try {
@@ -18,16 +21,50 @@ async function handle(controllerFn, req, res) {
   }
 }
 
+function normalizeTaskPriority(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const v = String(value).trim();
+  if (!v) return null;
+
+  const lower = v.toLowerCase();
+  const allowed = new Set(Object.values(TASK_PRIORITY || {}));
+  if (allowed.has(lower)) return lower;
+
+  // Common UI values like "Medium" / "High"
+  if (allowed.has(lower.replace(/\s+/g, '_'))) return lower.replace(/\s+/g, '_');
+  return lower; // let DB validate if still invalid
+}
+
+function normalizeTaskStatus(value) {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  const v = String(value).trim();
+  if (!v) return null;
+
+  const norm = v.toLowerCase().replace(/\s+/g, '_');
+  const allowed = new Set(Object.values(TASK_STATUS || {}));
+  if (allowed.has(norm)) return norm;
+
+  // Map common UI statuses
+  if (norm === 'to_do') return TASK_STATUS.TODO;
+  if (norm === 'in_review') return TASK_STATUS.IN_PROGRESS;
+
+  return norm; // let DB validate if still invalid
+}
+
 function createTask(req, res) {
   return handle(async () => {
     const {
       title,
       description,
+      about,
       status,
       priority,
       dueDate,
       projectId,
       assigneeId,
+      assigneeEmail,
       assignerId,
       completedAt
     } = req.body || {};
@@ -38,14 +75,48 @@ function createTask(req, res) {
       throw error;
     }
 
+    // Support rich-text HTML (frontend uses Quill). Also accept "about" alias.
+    const richDescription =
+      typeof description === 'string'
+        ? description
+        : (typeof about === 'string' ? about : null);
+
+    const normalizedPriority = normalizeTaskPriority(priority);
+    const normalizedStatus = normalizeTaskStatus(status);
+
+    let resolvedAssigneeId = assigneeId || null;
+    if (!resolvedAssigneeId && assigneeEmail) {
+      const email = String(assigneeEmail).trim().toLowerCase();
+      const user = await userRepository.findByEmail(email);
+      if (!user) {
+        const error = new Error('Assignee not found');
+        error.statusCode = 400;
+        throw error;
+      }
+      resolvedAssigneeId = user.id;
+    }
+
+    // If projectId is present and we have an assignee, ensure they belong to the project.
+    if (projectId && resolvedAssigneeId) {
+      const membership = await projectMemberRepository.findOne({
+        project_id: String(projectId),
+        user_id: String(resolvedAssigneeId)
+      });
+      if (!membership) {
+        const error = new Error('Assignee is not a member of this project');
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
     const payload = {
       title,
-      description: description || null,
-      status: status || null,
-      priority: priority || null,
+      description: richDescription || null,
+      status: normalizedStatus !== undefined ? normalizedStatus : (status || null),
+      priority: normalizedPriority !== undefined ? normalizedPriority : (priority || null),
       due_date: dueDate || null,
       project_id: projectId || null,
-      assignee_id: assigneeId || null,
+      assignee_id: resolvedAssigneeId ? String(resolvedAssigneeId) : null,
       // Default assigner to authenticated user if not provided
       assigner_id: (assignerId || (req.user && req.user.id)) ? String(assignerId || req.user.id) : null,
       completed_at: completedAt || null
@@ -68,7 +139,20 @@ function listTasks(req, res) {
     if (priority) filters.priority = String(priority);
 
     const tasks = await taskRepository.findMany(filters);
-    return { data: tasks };
+
+    // Attach safe assignee info for UI (email/name) when possible
+    const assigneeIds = Array.from(
+      new Set((tasks || []).map((t) => t.assignee_id).filter(Boolean).map(String))
+    );
+    const assignees = assigneeIds.length > 0 ? await userRepository.findManyByIds(assigneeIds) : [];
+    const assigneesById = new Map(assignees.map((u) => [String(u.id), u]));
+
+    const withAssignee = (tasks || []).map((task) => ({
+      ...task,
+      assignee: task.assignee_id ? (assigneesById.get(String(task.assignee_id)) || null) : null
+    }));
+
+    return { data: withAssignee };
   }, req, res);
 }
 
@@ -144,8 +228,8 @@ function updateTaskById(req, res) {
     const payload = {
       ...(title !== undefined ? { title } : {}),
       ...(description !== undefined ? { description } : {}),
-      ...(status !== undefined ? { status } : {}),
-      ...(priority !== undefined ? { priority } : {}),
+      ...(status !== undefined ? { status: normalizeTaskStatus(status) } : {}),
+      ...(priority !== undefined ? { priority: normalizeTaskPriority(priority) } : {}),
       ...(dueDate !== undefined ? { due_date: dueDate } : {}),
       ...(projectId !== undefined ? { project_id: projectId } : {}),
       ...(assigneeId !== undefined ? { assignee_id: assigneeId } : {}),

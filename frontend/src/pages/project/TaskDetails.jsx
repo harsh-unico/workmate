@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { AttachmentList, DashboardSectionCard } from "../../components";
@@ -8,6 +8,8 @@ import attachmentIcon from "../../assets/icons/attachment.png";
 import fileIcon from "../../assets/icons/fileIcon.png";
 import imageIcon from "../../assets/icons/imageIcon.png";
 import downloadIcon from "../../assets/icons/download.png";
+import { getOrganisationById } from "../../services/orgService";
+import { getProjectById } from "../../services/projectService";
 
 const DEFAULT_TASK = {
   id: 1,
@@ -74,24 +76,40 @@ const TaskDetails = () => {
   const [commentAttachments, setCommentAttachments] = useState([]);
   const commentFileInputRef = useRef(null);
 
-  const organisationName = "Quantum Solutions";
+  const [orgName, setOrgName] = useState("");
+  const [projName, setProjName] = useState(location.state?.projectName || "");
   const projectNameFromState = location.state?.projectName;
   const taskFromState = location.state?.task;
 
-  const derivedProjectName =
-    projectId && typeof projectId === "string"
-      ? projectId
-          .split("-")
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" ")
-      : "Project Alpha";
+  useEffect(() => {
+    const orgId = id;
+    const pid = projectId;
+    if (!orgId || !pid) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const [orgRes, projRes] = await Promise.all([
+          getOrganisationById(orgId),
+          getProjectById(pid),
+        ]);
+        if (cancelled) return;
+        setOrgName(orgRes?.data?.org_name || "");
+        setProjName(projRes?.data?.name || "");
+      } catch {
+        // ignore
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, projectId]);
 
-  const projectName = projectNameFromState || derivedProjectName;
+  const projectName = projectNameFromState || projName || projectId;
   const task = { ...DEFAULT_TASK, ...taskFromState };
 
   const breadcrumbLabel = useMemo(
-    () => `${organisationName} / ${projectName} /`,
-    [organisationName, projectName]
+    () => `${orgName || "Organisation"} / ${projectName || "Project"} /`,
+    [orgName, projectName]
   );
 
   const getCommentAttachmentIcon = (file) => {

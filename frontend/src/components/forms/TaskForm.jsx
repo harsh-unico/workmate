@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import PropTypes from "prop-types";
 import { useTheme } from "../../context/theme";
 import { AttachmentUploader, DatePicker, RichTextEditor } from "..";
@@ -11,6 +11,7 @@ const TaskFormField = ({
   fieldWrapperStyle,
   inputProps = {},
   inputStyle = {},
+  required = false,
 }) => {
   const mergedStyle = { ...baseInputStyle, ...inputStyle };
 
@@ -19,6 +20,7 @@ const TaskFormField = ({
       {label && (
         <label style={labelStyle} htmlFor={name}>
           {label}
+          {required ? <span style={{ color: "#dc2626" }}> *</span> : null}
         </label>
       )}
       <input id={name} name={name} style={mergedStyle} {...inputProps} />
@@ -26,7 +28,7 @@ const TaskFormField = ({
   );
 };
 
-const TaskForm = ({ formData, onFieldChange }) => {
+const TaskForm = ({ formData, onFieldChange, memberOptions = [] }) => {
   const t = useTheme();
 
   const handleChange = (field) => (event) => {
@@ -38,13 +40,28 @@ const TaskForm = ({ formData, onFieldChange }) => {
     onFieldChange?.("description", value);
   };
 
-  const handleAddAssignee = () => {
-    const name = (formData.assigneeSearch || "").trim();
-    if (!name) return;
+  const selected = formData.assignees || [];
 
+  const filteredAssigneeOptions = useMemo(() => {
+    const q = String(formData.assigneeSearch || "").trim().toLowerCase();
+    if (!q) return [];
+    const selectedSet = new Set(selected.map((s) => String(s).toLowerCase()));
+    return (memberOptions || [])
+      .filter((m) => m && m.email)
+      .filter((m) => !selectedSet.has(String(m.email).toLowerCase()))
+      .filter((m) => {
+        const hay = `${m.name || ""} ${m.email || ""}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .slice(0, 8);
+  }, [formData.assigneeSearch, memberOptions, selected]);
+
+  const addAssignee = (email) => {
+    const e = String(email || "").trim();
+    if (!e) return;
     const current = formData.assignees || [];
-    if (!current.includes(name)) {
-      onFieldChange?.("assignees", [...current, name]);
+    if (!current.includes(e)) {
+      onFieldChange?.("assignees", [...current, e]);
     }
     onFieldChange?.("assigneeSearch", "");
   };
@@ -52,7 +69,9 @@ const TaskForm = ({ formData, onFieldChange }) => {
   const handleAssigneeSearchKeyDown = (event) => {
     if (event.key === "Enter" || event.key === "Tab" || event.key === ",") {
       event.preventDefault();
-      handleAddAssignee();
+      if (filteredAssigneeOptions.length > 0) {
+        addAssignee(filteredAssigneeOptions[0].email);
+      }
     } else if (
       event.key === "Backspace" &&
       !formData.assigneeSearch &&
@@ -124,6 +143,7 @@ const TaskForm = ({ formData, onFieldChange }) => {
           baseInputStyle={baseInputStyle}
           labelStyle={labelStyle}
           fieldWrapperStyle={fieldWrapperStyle}
+          required
           inputProps={{
             type: "text",
             value: formData.taskName,
@@ -135,7 +155,7 @@ const TaskForm = ({ formData, onFieldChange }) => {
 
       <div style={{ marginBottom: t.spacing(4) }}>
         <label style={labelStyle} htmlFor="description">
-          Description
+          Description<span style={{ color: "#dc2626" }}> *</span>
         </label>
         <RichTextEditor
           id="description"
@@ -150,20 +170,78 @@ const TaskForm = ({ formData, onFieldChange }) => {
       </div>
 
       <div style={{ marginBottom: t.spacing(4) }}>
-        <TaskFormField
-          label="Assignee"
-          name="assigneeSearch"
-          baseInputStyle={baseInputStyle}
-          labelStyle={labelStyle}
-          fieldWrapperStyle={fieldWrapperStyle}
-          inputProps={{
-            type: "text",
-            value: formData.assigneeSearch,
-            onChange: handleChange("assigneeSearch"),
-            onKeyDown: handleAssigneeSearchKeyDown,
-            placeholder: "Search for a member...",
-          }}
-        />
+        <div style={{ position: "relative" }}>
+          <TaskFormField
+            label="Assignee"
+            name="assigneeSearch"
+            baseInputStyle={baseInputStyle}
+            labelStyle={labelStyle}
+            fieldWrapperStyle={fieldWrapperStyle}
+            required
+            inputProps={{
+              type: "text",
+              value: formData.assigneeSearch,
+              onChange: handleChange("assigneeSearch"),
+              onKeyDown: handleAssigneeSearchKeyDown,
+              placeholder: "Search and select project members...",
+              autoComplete: "off",
+            }}
+          />
+
+          {String(formData.assigneeSearch || "").trim() && (
+            <div
+              style={{
+                position: "absolute",
+                top: "calc(100% + 8px)",
+                left: 0,
+                right: 0,
+                backgroundColor: "#ffffff",
+                border: `1px solid ${t.colors.blackBorder}`,
+                borderRadius: "12px",
+                boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
+                overflow: "hidden",
+                zIndex: 10,
+              }}
+            >
+              {filteredAssigneeOptions.length === 0 ? (
+                <div
+                  style={{
+                    padding: t.spacing(3),
+                    color: "#6b7280",
+                    fontSize: t.font.size.sm,
+                  }}
+                >
+                  No matching members.
+                </div>
+              ) : (
+                filteredAssigneeOptions.map((m) => (
+                  <button
+                    key={m.id || m.email}
+                    type="button"
+                    onClick={() => addAssignee(m.email)}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      padding: t.spacing(3),
+                      border: "none",
+                      background: "transparent",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div style={{ fontSize: t.font.size.md, color: "#111827" }}>
+                      {m.name || m.email}
+                    </div>
+                    {m.name ? (
+                      <div style={{ fontSize: t.font.size.sm, color: "#6b7280" }}>
+                        {m.email}
+                      </div>
+                    ) : null}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+        </div>
         <div
           style={{
             marginTop: t.spacing(2),
@@ -197,13 +275,13 @@ const TaskForm = ({ formData, onFieldChange }) => {
         }}
       >
         <DatePicker
-          label="Start Date"
+          label="Start Date *"
           name="startDate"
           value={formData.startDate}
           onChange={(value) => onFieldChange?.("startDate", value)}
         />
         <DatePicker
-          label="Due Date"
+          label="Due Date *"
           name="dueDate"
           value={formData.dueDate}
           onChange={(value) => onFieldChange?.("dueDate", value)}
@@ -220,7 +298,7 @@ const TaskForm = ({ formData, onFieldChange }) => {
       >
         <div style={fieldWrapperStyle}>
           <label style={labelStyle} htmlFor="priority">
-            Priority
+            Priority<span style={{ color: "#dc2626" }}> *</span>
           </label>
           <select
             id="priority"
@@ -240,7 +318,7 @@ const TaskForm = ({ formData, onFieldChange }) => {
 
         <div style={fieldWrapperStyle}>
           <label style={labelStyle} htmlFor="status">
-            Status
+            Status<span style={{ color: "#dc2626" }}> *</span>
           </label>
           <select
             id="status"
@@ -284,6 +362,13 @@ TaskForm.propTypes = {
     attachments: PropTypes.array,
   }).isRequired,
   onFieldChange: PropTypes.func.isRequired,
+  memberOptions: PropTypes.arrayOf(
+    PropTypes.shape({
+      id: PropTypes.string,
+      email: PropTypes.string,
+      name: PropTypes.string,
+    })
+  ),
 };
 
 export default TaskForm;

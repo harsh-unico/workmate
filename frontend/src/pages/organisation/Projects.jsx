@@ -130,21 +130,21 @@ const OrganisationProjects = () => {
               <div>No projects found.</div>
             ) : (
               filteredProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  onClick={() =>
-                    navigate(
-                      `/organisations/${id}/projects/${project.id}/overview`,
-                      {
-                        state: {
-                          projectName: project.name,
-                          overallProgress: project.progress,
-                        },
-                      }
-                    )
-                  }
-                />
+              <ProjectCard
+                key={project.id}
+                project={project}
+                onClick={() =>
+                  navigate(
+                    `/organisations/${id}/projects/${project.id}/overview`,
+                    {
+                      state: {
+                        projectName: project.name,
+                        overallProgress: project.progress,
+                      },
+                    }
+                  )
+                }
+              />
               ))
             )}
           </div>
