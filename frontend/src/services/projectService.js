@@ -25,5 +25,12 @@ export const updateProjectById = async (projectId, payload = {}) => {
   return apiClient.patch(`${API_ENDPOINTS.PROJECT.LIST}/${encodeURIComponent(String(projectId))}`, payload)
 }
 
+export const getProjectTaskStats = async (projectId) => {
+  if (!projectId) throw new Error('projectId is required')
+  return apiClient.get(
+    `${API_ENDPOINTS.PROJECT.LIST}/${encodeURIComponent(String(projectId))}/tasks/stats`
+  )
+}
+
 
 

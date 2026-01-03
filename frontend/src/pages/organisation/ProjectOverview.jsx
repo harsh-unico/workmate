@@ -6,7 +6,7 @@ import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import AboutProjectPopup from "./AboutProjectPopup";
 import { getOrganisationById } from "../../services/orgService";
-import { getProjectById } from "../../services/projectService";
+import { getProjectById, getProjectTaskStats } from "../../services/projectService";
 
 const ProjectOverview = () => {
   const t = useTheme();
@@ -18,6 +18,12 @@ const ProjectOverview = () => {
   const [project, setProject] = useState(null);
   const [projectError, setProjectError] = useState("");
   const [isAboutPopupOpen, setIsAboutPopupOpen] = useState(false);
+  const [statsData, setStatsData] = useState({
+    progressPercent: null,
+    total: null,
+    completed: null,
+    pending: null,
+  });
 
   useEffect(() => {
     if (!id || !projectId) return;
@@ -25,18 +31,26 @@ const ProjectOverview = () => {
     setProjectError("");
     (async () => {
       try {
-        const [orgRes, projRes] = await Promise.all([
+        const [orgRes, projRes, statsRes] = await Promise.all([
           getOrganisationById(id),
           getProjectById(projectId),
+          getProjectTaskStats(projectId),
         ]);
         if (cancelled) return;
         setOrgName(orgRes?.data?.org_name || "Organisation");
         setProject(projRes?.data || null);
+        setStatsData({
+          progressPercent: Number(statsRes?.data?.progressPercent ?? 0),
+          total: Number(statsRes?.data?.total ?? 0),
+          completed: Number(statsRes?.data?.completed ?? 0),
+          pending: Number(statsRes?.data?.pending ?? 0),
+        });
       } catch (e) {
         if (cancelled) return;
         setOrgName("Organisation");
         setProject(null);
         setProjectError(e?.message || "Failed to load project.");
+        setStatsData({ progressPercent: null, total: null, completed: null, pending: null });
       }
     })();
     return () => {
@@ -80,24 +94,24 @@ const ProjectOverview = () => {
   const stats = [
     {
       label: "Overall Progress",
-      value: `${overallProgressValue}%`,
+      value: `${statsData.progressPercent ?? overallProgressValue}%`,
       delta: null,
-      progress: overallProgressValue,
+      progress: statsData.progressPercent ?? overallProgressValue,
     },
     {
       label: "Total Tasks",
-      value: 124,
+      value: statsData.total ?? "—",
       delta: "+ 12 this week",
     },
     {
       label: "Tasks Completed",
-      value: 93,
+      value: statsData.completed ?? "—",
       delta: "+ 8 this week",
     },
     {
-      label: "Tasks Overdue",
-      value: 5,
-      delta: "+ 1 from yesterday",
+      label: "Tasks Pending",
+      value: statsData.pending ?? "—",
+      delta: null,
     },
   ];
 

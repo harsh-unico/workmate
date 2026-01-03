@@ -11,6 +11,8 @@ const router = express.Router();
 router.get('/admin', requireAuth, projectController.listAdminProjects);
 // Get projects created by the given user (projects.created_by = :userId)
 router.get('/created-by/:userId', requireAuth, projectController.listProjectsCreatedByUser);
+// Project task stats (must be a project member)
+router.get('/:projectId/tasks/stats', requireAuth, projectController.getProjectTaskStats);
 // Get a single project by id (must be a project member)
 router.get('/:projectId', requireAuth, projectController.getProjectById);
 // Update project (must be a project admin: owner/manager)

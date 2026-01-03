@@ -6,6 +6,7 @@ const { PROJECT_MEMBER_ROLE } = require('../enums');
 const userRepository = require('../repositories/userRepository');
 const orgMemberRepository = require('../repositories/orgMemberRepository');
 const attachmentRepository = require('../repositories/attachmentRepository');
+const taskRepository = require('../repositories/taskRepository');
 
 async function handle(controllerFn, req, res) {
   try {
@@ -276,6 +277,34 @@ function updateProjectById(req, res) {
   }, req, res);
 }
 
+function getProjectTaskStats(req, res) {
+  return handle(async () => {
+    const projectId = req.params && req.params.projectId ? String(req.params.projectId) : null;
+    if (!projectId) {
+      const error = new Error('projectId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireProjectMember(req, projectId);
+
+    const tasks = await taskRepository.findMany({ project_id: String(projectId) });
+    const total = Array.isArray(tasks) ? tasks.length : 0;
+    const completed = (tasks || []).filter((t) => String(t.status || '').toLowerCase() === 'done').length;
+    const pending = Math.max(0, total - completed);
+    const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      data: {
+        total,
+        completed,
+        pending,
+        progressPercent
+      }
+    };
+  }, req, res);
+}
+
 function listAdminProjects(req, res) {
   return handle(async () => {
     const userId = req.user && req.user.id ? String(req.user.id) : null;
@@ -319,6 +348,7 @@ module.exports = {
   createProject,
   getProjectById,
   updateProjectById,
+  getProjectTaskStats,
   listAdminProjects,
   listProjectsCreatedByUser
 };
