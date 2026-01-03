@@ -48,7 +48,8 @@ function normalizeTaskStatus(value) {
 
   // Map common UI statuses
   if (norm === 'to_do') return TASK_STATUS.TODO;
-  if (norm === 'in_review') return TASK_STATUS.IN_PROGRESS;
+  // UI uses "In Review"; backend enum uses "in_review"
+  if (norm === 'in_review') return TASK_STATUS.IN_REVIEW;
 
   return norm; // let DB validate if still invalid
 }
@@ -200,7 +201,17 @@ function getTaskById(req, res) {
       throw error;
     }
 
-    return { data: task };
+    // Attach safe assignee info for UI (email/name) when possible (parity with listTasks)
+    let assignee = null;
+    if (task.assignee_id) {
+      try {
+        assignee = await userRepository.findById(String(task.assignee_id));
+      } catch {
+        assignee = null;
+      }
+    }
+
+    return { data: { ...task, assignee } };
   }, req, res);
 }
 
@@ -244,7 +255,17 @@ function updateTaskById(req, res) {
       throw error;
     }
 
-    return { data: updated };
+    // Attach safe assignee info for UI (email/name) when possible (parity with listTasks/getTaskById)
+    let assignee = null;
+    if (updated.assignee_id) {
+      try {
+        assignee = await userRepository.findById(String(updated.assignee_id));
+      } catch {
+        assignee = null;
+      }
+    }
+
+    return { data: { ...updated, assignee } };
   }, req, res);
 }
 

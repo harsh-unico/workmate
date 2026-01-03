@@ -19,4 +19,17 @@ export const listTasks = async (filters = {}) => {
   return apiClient.get(`${API_ENDPOINTS.TASK.LIST}${qs ? `?${qs}` : ''}`)
 }
 
+export const getTaskById = async (taskId) => {
+  if (!taskId) throw new Error('taskId is required')
+  return apiClient.get(`${API_ENDPOINTS.TASK.LIST}/${encodeURIComponent(String(taskId))}`)
+}
+
+export const updateTaskById = async (taskId, payload = {}) => {
+  if (!taskId) throw new Error('taskId is required')
+  return apiClient.patch(
+    `${API_ENDPOINTS.TASK.LIST}/${encodeURIComponent(String(taskId))}`,
+    payload
+  )
+}
+
 

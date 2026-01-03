@@ -61,7 +61,7 @@ const TASK_PRIORITY = Object.freeze({
 const TASK_STATUS = Object.freeze({
   TODO: 'todo',
   IN_PROGRESS: 'in_progress',
-  BLOCKED: 'blocked',
+  IN_REVIEW: 'in_review',
   DONE: 'done'
 });
 

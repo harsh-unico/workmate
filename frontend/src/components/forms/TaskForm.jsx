@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import PropTypes from "prop-types";
 import { useTheme } from "../../context/theme";
 import { AttachmentUploader, DatePicker, RichTextEditor } from "..";
@@ -30,6 +30,7 @@ const TaskFormField = ({
 
 const TaskForm = ({ formData, onFieldChange, memberOptions = [] }) => {
   const t = useTheme();
+  const [isAssigneeOpen, setIsAssigneeOpen] = useState(false);
 
   const handleChange = (field) => (event) => {
     const value = event.target.value;
@@ -40,52 +41,73 @@ const TaskForm = ({ formData, onFieldChange, memberOptions = [] }) => {
     onFieldChange?.("description", value);
   };
 
-  const selected = formData.assignees || [];
+  const selectedEmail =
+    Array.isArray(formData.assignees) && formData.assignees.length > 0
+      ? String(formData.assignees[0] || "").trim()
+      : "";
+
+  const selectedMember = useMemo(() => {
+    if (!selectedEmail) return null;
+    const needle = selectedEmail.toLowerCase();
+    return (memberOptions || []).find(
+      (m) => m?.email && String(m.email).toLowerCase() === needle
+    );
+  }, [memberOptions, selectedEmail]);
+
+  // If we already have an assignee email (e.g. Edit Task), show the member name in the field.
+  useEffect(() => {
+    if (!selectedMember?.name) return;
+    const current = String(formData.assigneeSearch || "").trim();
+    if (!current) {
+      onFieldChange?.("assigneeSearch", selectedMember.name);
+    }
+  }, [formData.assigneeSearch, onFieldChange, selectedMember]);
 
   const filteredAssigneeOptions = useMemo(() => {
     const q = String(formData.assigneeSearch || "").trim().toLowerCase();
-    if (!q) return [];
-    const selectedSet = new Set(selected.map((s) => String(s).toLowerCase()));
-    return (memberOptions || [])
-      .filter((m) => m && m.email)
-      .filter((m) => !selectedSet.has(String(m.email).toLowerCase()))
-      .filter((m) => {
-        const hay = `${m.name || ""} ${m.email || ""}`.toLowerCase();
-        return hay.includes(q);
-      })
-      .slice(0, 8);
-  }, [formData.assigneeSearch, memberOptions, selected]);
 
-  const addAssignee = (email) => {
-    const e = String(email || "").trim();
-    if (!e) return;
-    const current = formData.assignees || [];
-    if (!current.includes(e)) {
-      onFieldChange?.("assignees", [...current, e]);
-    }
+    const rows = (memberOptions || []).filter((m) => m && m.email);
+    const filtered = !q
+      ? rows
+      : rows.filter((m) => {
+          const hay = `${m.name || ""} ${m.email || ""}`.toLowerCase();
+          return hay.includes(q);
+        });
+
+    // Do not show the already-selected member in options.
+    const needle = selectedEmail ? selectedEmail.toLowerCase() : "";
+    return filtered
+      .filter((m) => !needle || String(m.email).toLowerCase() !== needle)
+      .slice(0, 12);
+  }, [formData.assigneeSearch, memberOptions, selectedEmail]);
+
+  const selectAssignee = (member) => {
+    const email = String(member?.email || "").trim();
+    if (!email) return;
+    onFieldChange?.("assignees", [email]);
+    onFieldChange?.("assigneeSearch", member?.name || email);
+    setIsAssigneeOpen(false);
+  };
+
+  const clearAssignee = () => {
+    onFieldChange?.("assignees", []);
     onFieldChange?.("assigneeSearch", "");
   };
 
-  const handleAssigneeSearchKeyDown = (event) => {
-    if (event.key === "Enter" || event.key === "Tab" || event.key === ",") {
+  const handleAssigneeKeyDown = (event) => {
+    if (event.key === "Enter") {
       event.preventDefault();
       if (filteredAssigneeOptions.length > 0) {
-        addAssignee(filteredAssigneeOptions[0].email);
+        selectAssignee(filteredAssigneeOptions[0]);
       }
-    } else if (
-      event.key === "Backspace" &&
-      !formData.assigneeSearch &&
-      (formData.assignees || []).length
-    ) {
-      const next = [...(formData.assignees || [])];
-      next.pop();
-      onFieldChange?.("assignees", next);
+    } else if (event.key === "Escape") {
+      setIsAssigneeOpen(false);
+    } else if (event.key === "Backspace") {
+      const q = String(formData.assigneeSearch || "");
+      if (!q && selectedEmail) {
+        clearAssignee();
+      }
     }
-  };
-
-  const handleRemoveAssignee = (member) => {
-    const next = (formData.assignees || []).filter((m) => m !== member);
-    onFieldChange?.("assignees", next);
   };
 
   const baseInputStyle = {
@@ -182,13 +204,41 @@ const TaskForm = ({ formData, onFieldChange, memberOptions = [] }) => {
               type: "text",
               value: formData.assigneeSearch,
               onChange: handleChange("assigneeSearch"),
-              onKeyDown: handleAssigneeSearchKeyDown,
-              placeholder: "Search and select project members...",
+              onKeyDown: handleAssigneeKeyDown,
+              onFocus: () => setIsAssigneeOpen(true),
+              onBlur: () => {
+                // Give click handlers time to run before closing
+                window.setTimeout(() => setIsAssigneeOpen(false), 120);
+              },
+              placeholder: "Select a project member...",
               autoComplete: "off",
             }}
           />
 
-          {String(formData.assigneeSearch || "").trim() && (
+          {selectedEmail ? (
+            <button
+              type="button"
+              onClick={clearAssignee}
+              style={{
+                position: "absolute",
+                right: t.spacing(3),
+                top: "50%",
+                transform: "translateY(-5%)",
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
+                color: "#6b7280",
+                fontSize: 16,
+                lineHeight: 1,
+              }}
+              aria-label="Clear assignee"
+              title="Clear"
+            >
+              ×
+            </button>
+          ) : null}
+
+          {isAssigneeOpen && (
             <div
               style={{
                 position: "absolute",
@@ -218,7 +268,8 @@ const TaskForm = ({ formData, onFieldChange, memberOptions = [] }) => {
                   <button
                     key={m.id || m.email}
                     type="button"
-                    onClick={() => addAssignee(m.email)}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => selectAssignee(m)}
                     style={{
                       width: "100%",
                       textAlign: "left",
@@ -241,28 +292,6 @@ const TaskForm = ({ formData, onFieldChange, memberOptions = [] }) => {
               )}
             </div>
           )}
-        </div>
-        <div
-          style={{
-            marginTop: t.spacing(2),
-            display: "flex",
-            flexWrap: "wrap",
-            gap: t.spacing(1.5),
-          }}
-        >
-          {(formData.assignees || []).map((member) => (
-            <span key={member} style={chipStyle}>
-              {member}
-              <button
-                type="button"
-                style={chipRemoveButtonStyle}
-                onClick={() => handleRemoveAssignee(member)}
-                aria-label={`Remove ${member}`}
-              >
-                ×
-              </button>
-            </span>
-          ))}
         </div>
       </div>
 

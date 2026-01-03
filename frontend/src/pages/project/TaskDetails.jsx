@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { AttachmentList, DashboardSectionCard } from "../../components";
@@ -10,60 +10,255 @@ import imageIcon from "../../assets/icons/imageIcon.png";
 import downloadIcon from "../../assets/icons/download.png";
 import { getOrganisationById } from "../../services/orgService";
 import { getProjectById } from "../../services/projectService";
-
-const DEFAULT_TASK = {
-  id: 1,
-  title: "Design New Landing Page",
-  status: "In Progress",
-  description:
-    "Create 3–5 high-fidelity mockups for the new homepage based on the provided wireframes. Focus on a clean, modern aesthetic and ensure the design is responsive for mobile and desktop. Include variations for both light and dark themes.",
-  assignee: {
-    name: "Alex Garfield",
-    initials: "AG",
-  },
-  dueDate: "Dec 28, 2025",
-  priority: "High",
-  attachments: [
-    {
-      id: "wireframes",
-      name: "Wireframes.fig",
-      size: 125 * 1024 * 1024,
-      type: "Figma",
-    },
-    {
-      id: "screen",
-      name: "Screen.png",
-      size: 3.1 * 1024 * 1024,
-      type: "PNG Image",
-    },
-  ],
-};
-
-const INITIAL_COMMENTS = [
-  {
-    id: 1,
-    author: "Ann Rayman",
-    initials: "AR",
-    timestamp: "2 days ago",
-    text: "Just reviewed the wireframes. They look solid! Ready to start on the visual design.",
-  },
-  {
-    id: 2,
-    author: "Michael",
-    initials: "M",
-    timestamp: "1 day ago",
-    text: "Great to hear! Let me know if you need any assets for the mockups.",
-  },
-  {
-    id: 3,
-    author: "Olivia",
-    initials: "O",
-    timestamp: "4 hours ago",
-    text: "Remember to include the new CTA button variants we discussed in the design system.",
-  },
-];
+import { getTaskById, updateTaskById } from "../../services/taskService";
+import {
+  createComment,
+  listComments as listTaskComments,
+  updateCommentById as updateCommentByIdApi,
+} from "../../services/commentService";
 
 const STATUS_OPTIONS = ["To do", "In Progress", "In Review", "Done"];
+
+const CommentComposer = ({
+  t,
+  attachmentIcon,
+  value,
+  onChange,
+  onSubmit,
+  isSubmitting = false,
+  attachments,
+  onRemoveAttachment,
+  onAddAttachmentClick,
+  fileInputRef,
+  onFilesSelected,
+  placeholder = "Add a comment...",
+  submitLabel = "Comment",
+  openLocalAttachment,
+  getCommentAttachmentIcon,
+}) => (
+  <form onSubmit={onSubmit}>
+    <div
+      style={{
+        display: "flex",
+        gap: t.spacing(3),
+        marginBottom: t.spacing(3),
+      }}
+    >
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: "999px",
+          backgroundColor: "#3b82f6",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#ffffff",
+          fontWeight: t.font.weight.semiBold,
+          fontSize: t.font.size.sm,
+          flexShrink: 0,
+        }}
+      >
+        Y
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ position: "relative" }}>
+          <textarea
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder={placeholder}
+            rows={3}
+            style={{
+              width: "100%",
+              resize: "vertical",
+              padding: t.spacing(3),
+              paddingRight: t.spacing(8),
+              borderRadius: "12px",
+              border: `1px solid ${t.colors.blackBorder}`,
+              backgroundColor: "transparent",
+              fontFamily: t.font.family,
+              fontSize: t.font.size.sm,
+              color: t.colors.textBodyDark,
+              outline: "none",
+            }}
+          />
+          <button
+            type="button"
+            onClick={onAddAttachmentClick}
+            style={{
+              position: "absolute",
+              right: t.spacing(3),
+              bottom: t.spacing(2.5),
+              border: "none",
+              background: "none",
+              cursor: "pointer",
+              padding: 0,
+            }}
+            aria-label="Add attachment"
+          >
+            <img
+              src={attachmentIcon}
+              alt="Attachment"
+              style={{ width: 18, height: 18, objectFit: "contain" }}
+            />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            style={{ display: "none" }}
+            onChange={onFilesSelected}
+          />
+        </div>
+
+        {attachments && attachments.length > 0 && (
+          <div
+            style={{
+              marginTop: t.spacing(2),
+              display: "flex",
+              flexWrap: "wrap",
+              gap: t.spacing(1.5),
+            }}
+          >
+            {attachments.map((file, index) => (
+              <div
+                key={`${file.name}-${index}`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: `${t.spacing(1)} ${t.spacing(1.75)}`,
+                  borderRadius: "999px",
+                  backgroundColor: "transparent",
+                  color: t.colors.textBodyDark,
+                  fontSize: t.font.size.xs,
+                  gap: t.spacing(1),
+                  maxWidth: 260,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => openLocalAttachment(file)}
+                  style={{
+                    border: "none",
+                    background: "none",
+                    padding: 0,
+                    margin: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: t.spacing(1),
+                    cursor: "pointer",
+                    maxWidth: "100%",
+                  }}
+                >
+                  <img
+                    src={getCommentAttachmentIcon(file)}
+                    alt="Attachment"
+                    style={{ width: 14, height: 14, objectFit: "contain" }}
+                  />
+                  <span
+                    title={file.name}
+                    style={{
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {file.name}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemoveAttachment(index)}
+                  style={{
+                    marginLeft: t.spacing(0.5),
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                    fontSize: t.font.size.xs,
+                  }}
+                  aria-label={`Remove ${file.name}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{ marginTop: t.spacing(2), display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="submit"
+            disabled={isSubmitting || !String(value || "").trim()}
+            style={{
+              padding: `${t.spacing(1.5)} ${t.spacing(3.5)}`,
+              borderRadius: "999px",
+              border: "none",
+              backgroundColor: t.colors.buttonPrimary,
+              color: t.colors.buttonText,
+              fontSize: t.font.size.sm,
+              fontWeight: t.font.weight.medium,
+              cursor: isSubmitting || !String(value || "").trim() ? "not-allowed" : "pointer",
+              opacity: isSubmitting || !String(value || "").trim() ? 0.7 : 1,
+            }}
+          >
+            {isSubmitting ? "Saving..." : submitLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+);
+
+const statusToApiValue = (label) => {
+  const v = String(label || "").trim().toLowerCase();
+  if (v === "to do" || v === "todo") return "todo";
+  if (v === "in progress" || v === "in_progress") return "in_progress";
+  if (v === "in review" || v === "in_review") return "in_review";
+  if (v === "done") return "done";
+  return v.replace(/\s+/g, "_");
+};
+
+const statusLabel = (value) => {
+  const v = String(value || "").trim();
+  if (!v) return "To do";
+  const norm = v.toLowerCase().replace(/\s+/g, "_");
+  if (norm === "todo" || norm === "to_do") return "To do";
+  if (norm === "in_progress" || norm === "in-progress") return "In Progress";
+  if (norm === "in_review") return "In Review";
+  if (norm === "done") return "Done";
+  // Already human readable? Use as-is
+  return v;
+};
+
+const priorityLabel = (value) => {
+  const v = String(value || "").trim();
+  if (!v) return "Medium";
+  const norm = v.toLowerCase();
+  if (norm === "high") return "High";
+  if (norm === "medium") return "Medium";
+  if (norm === "low") return "Low";
+  if (norm === "urgent") return "High";
+  // If it is already "High"/"Medium"/"Low"
+  const cap = v[0].toUpperCase() + v.slice(1).toLowerCase();
+  return ["High", "Medium", "Low"].includes(cap) ? cap : "Medium";
+};
+
+const initialsFrom = (nameOrEmail) => {
+  const s = String(nameOrEmail || "").trim();
+  if (!s) return "";
+  if (s.includes("@")) return s.slice(0, 2).toUpperCase();
+  const parts = s.split(/\s+/).filter(Boolean);
+  return parts.map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+};
+
+const avatarColorFrom = (seed) => {
+  const colors = ["#22c55e", "#f97316", "#3b82f6", "#ef4444", "#6366f1", "#10b981"];
+  const str = String(seed || "");
+  let h = 0;
+  for (let i = 0; i < str.length; i += 1) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return colors[h % colors.length];
+};
 
 const TaskDetails = () => {
   const t = useTheme();
@@ -71,46 +266,181 @@ const TaskDetails = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [comments, setComments] = useState(INITIAL_COMMENTS);
+  const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [commentAttachments, setCommentAttachments] = useState([]);
   const commentFileInputRef = useRef(null);
+  const [activeReplyToId, setActiveReplyToId] = useState(null);
+  const [replyText, setReplyText] = useState("");
+  const [replyAttachments, setReplyAttachments] = useState([]);
+  const replyFileInputRef = useRef(null);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
+  const [commentsError, setCommentsError] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [submittingReplyToId, setSubmittingReplyToId] = useState(null);
+  const [editingCommentId, setEditingCommentId] = useState(null);
+  const [editText, setEditText] = useState("");
+  const [updatingCommentId, setUpdatingCommentId] = useState(null);
 
   const [orgName, setOrgName] = useState("");
   const [projName, setProjName] = useState(location.state?.projectName || "");
   const projectNameFromState = location.state?.projectName;
   const taskFromState = location.state?.task;
+  const [task, setTask] = useState(taskFromState || null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   useEffect(() => {
     const orgId = id;
     const pid = projectId;
-    if (!orgId || !pid) return;
+    const tid = taskId;
+    if (!orgId || !pid || !tid) return;
     let cancelled = false;
     (async () => {
       try {
-        const [orgRes, projRes] = await Promise.all([
+        setIsLoading(true);
+        setError("");
+        const [orgRes, projRes, taskRes] = await Promise.all([
           getOrganisationById(orgId),
           getProjectById(pid),
+          getTaskById(tid),
         ]);
         if (cancelled) return;
         setOrgName(orgRes?.data?.org_name || "");
         setProjName(projRes?.data?.name || "");
+        setTask(taskRes?.data || null);
       } catch {
         // ignore
+        if (!cancelled) {
+          setError("Failed to load task details.");
+          setTask(taskFromState || null);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [id, projectId]);
+  }, [id, projectId, taskId, taskFromState]);
 
   const projectName = projectNameFromState || projName || projectId;
-  const task = { ...DEFAULT_TASK, ...taskFromState };
+  const currentTask = task || taskFromState || {};
+  const displayStatus = statusLabel(currentTask.status);
+  const displayPriority = priorityLabel(currentTask.priority);
+  const dueDateLabel = currentTask.due_date
+    ? new Date(currentTask.due_date).toLocaleDateString()
+    : currentTask.dueDate || "";
+  const assigneeName =
+    currentTask.assignee?.name || currentTask.assignee?.email || "Unassigned";
+  const assigneeInitials = initialsFrom(assigneeName);
+  const assigneeAvatarColor = avatarColorFrom(
+    currentTask.assignee_id || assigneeName || currentTask.id || taskId
+  );
+  const descriptionHtml =
+    typeof currentTask.description === "string" ? currentTask.description : "";
+  const hasDescription =
+    typeof descriptionHtml === "string" &&
+    descriptionHtml.trim() !== "" &&
+    descriptionHtml.trim() !== "<p><br></p>";
 
-  const breadcrumbLabel = useMemo(
+  const handleBack = useCallback(() => {
+    const from = location.state?.from;
+    if (from) {
+      navigate(from);
+      return;
+    }
+    try {
+      if (window.history.length > 1) {
+        navigate(-1);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    navigate(`/organisations/${id}/projects/${projectId}/tasks`, {
+      state: { projectName },
+    });
+  }, [id, location.state, navigate, projectId, projectName]);
+
+  const breadcrumbText = useMemo(
     () => `${orgName || "Organisation"} / ${projectName || "Project"} /`,
     [orgName, projectName]
   );
+
+  const breadcrumbLabel = useMemo(
+    () => (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: t.spacing(1.5) }}>
+        <button
+          type="button"
+          onClick={handleBack}
+          aria-label="Back"
+          title="Back"
+          style={{
+            border: "none",
+            background: "transparent",
+            padding: 0,
+            margin: 0,
+            cursor: "pointer",
+            color: "inherit",
+            fontSize: 18,
+            lineHeight: 1,
+            display: "inline-flex",
+            alignItems: "center",
+          }}
+        >
+          ←
+        </button>
+        <span>{breadcrumbText}</span>
+      </span>
+    ),
+    [breadcrumbText, handleBack, t]
+  );
+
+  const handleStatusChange = async (nextLabel) => {
+    const nextStatus = statusToApiValue(nextLabel);
+    if (!taskId || !nextStatus) return;
+    if (isUpdatingStatus) return;
+    if (statusLabel(currentTask.status).toLowerCase() === String(nextLabel).toLowerCase()) return;
+
+    const prev = currentTask;
+    setIsUpdatingStatus(true);
+    setError("");
+
+    // Optimistic update
+    setTask((t0) => ({ ...(t0 || {}), status: nextStatus }));
+    try {
+      const res = await updateTaskById(taskId, { status: nextStatus });
+      setTask(res?.data || null);
+    } catch (e) {
+      // rollback
+      setTask(prev || null);
+      setError(e?.message || "Failed to update task status.");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const refreshComments = useCallback(async () => {
+    if (!taskId) return;
+    setIsCommentsLoading(true);
+    setCommentsError("");
+    try {
+      const res = await listTaskComments({ taskId });
+      const rows = Array.isArray(res?.data) ? res.data : [];
+      setComments(rows);
+    } catch (e) {
+      setCommentsError(e?.message || "Failed to load comments.");
+      setComments([]);
+    } finally {
+      setIsCommentsLoading(false);
+    }
+  }, [taskId]);
+
+  useEffect(() => {
+    refreshComments();
+  }, [refreshComments]);
 
   const getCommentAttachmentIcon = (file) => {
     const name = (file?.name || "").toLowerCase();
@@ -157,6 +487,12 @@ const TaskDetails = () => {
     }
   };
 
+  const handleReplyAttachmentClick = () => {
+    if (replyFileInputRef.current) {
+      replyFileInputRef.current.click();
+    }
+  };
+
   const handleCommentFilesSelected = (event) => {
     const files = Array.from(event.target.files || []);
     if (!files.length) return;
@@ -167,34 +503,136 @@ const TaskDetails = () => {
     event.target.value = "";
   };
 
+  const handleReplyFilesSelected = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!files.length) return;
+    setReplyAttachments((prev) => [...prev, ...files]);
+    // eslint-disable-next-line no-param-reassign
+    event.target.value = "";
+  };
+
   const handleAddComment = (event) => {
     if (event) {
       event.preventDefault();
     }
-    const value = newComment.trim();
-    if (!value && commentAttachments.length === 0) return;
-
-    const next = {
-      id: comments.length + 1,
-      author: "You",
-      initials: "Y",
-      timestamp: "Just now",
-      text: value,
-      attachments: commentAttachments,
+    const submit = async () => {
+      const value = newComment.trim();
+      if (!value) return;
+      if (isSubmittingComment) return;
+      setCommentsError("");
+      setIsSubmittingComment(true);
+      try {
+        await createComment({ taskId, content: value });
+        setNewComment("");
+        setCommentAttachments([]);
+        await refreshComments();
+      } catch (e) {
+        setCommentsError(e?.message || "Failed to add comment.");
+      } finally {
+        setIsSubmittingComment(false);
+      }
     };
 
-    setComments([next, ...comments]);
-    setNewComment("");
-    setCommentAttachments([]);
+    submit();
+  };
+
+  const handleAddReply = (parentId) => (event) => {
+    if (event) event.preventDefault();
+    const submit = async () => {
+      const value = replyText.trim();
+      if (!value || !parentId) return;
+      if (submittingReplyToId && String(submittingReplyToId) === String(parentId)) return;
+      setCommentsError("");
+      setSubmittingReplyToId(parentId);
+      try {
+        await createComment({ taskId, content: value, parentCommentId: parentId });
+        setReplyText("");
+        setReplyAttachments([]);
+        setActiveReplyToId(null);
+        await refreshComments();
+      } catch (e) {
+        setCommentsError(e?.message || "Failed to add reply.");
+      } finally {
+        setSubmittingReplyToId(null);
+      }
+    };
+    submit();
+  };
+
+  const startEditComment = (comment) => {
+    if (!comment?.id) return;
+    setEditingCommentId(comment.id);
+    setEditText(String(comment.content || ""));
+    // Close any open reply box while editing for clarity
+    setActiveReplyToId(null);
+    setReplyText("");
+    setReplyAttachments([]);
+  };
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditText("");
+  };
+
+  const saveEditComment = (commentId) => async (event) => {
+    if (event) event.preventDefault();
+    const content = String(editText || "").trim();
+    if (!commentId || !content) return;
+    if (updatingCommentId && String(updatingCommentId) === String(commentId)) return;
+
+    setCommentsError("");
+    setUpdatingCommentId(commentId);
+    try {
+      await updateCommentByIdApi(commentId, { content });
+      cancelEditComment();
+      await refreshComments();
+    } catch (e) {
+      setCommentsError(e?.message || "Failed to update comment.");
+    } finally {
+      setUpdatingCommentId(null);
+    }
+  };
+
+  const buildCommentTree = useCallback((rows) => {
+    const list = Array.isArray(rows) ? rows : [];
+    const byId = new Map();
+    const roots = [];
+    for (const c of list) {
+      if (!c || !c.id) continue;
+      byId.set(String(c.id), { ...c, children: [] });
+    }
+    for (const node of byId.values()) {
+      const parentId = node.parent_comment_id ? String(node.parent_comment_id) : null;
+      if (parentId && byId.has(parentId)) {
+        byId.get(parentId).children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+    return roots;
+  }, []);
+
+  const commentThreads = useMemo(() => buildCommentTree(comments), [buildCommentTree, comments]);
+
+  const formatTimestamp = (iso) => {
+    const ts = Date.parse(String(iso || ""));
+    if (!ts) return "";
+    try {
+      return new Date(ts).toLocaleString();
+    } catch {
+      return "";
+    }
   };
 
   const renderStatusChip = (statusOption) => {
-    const isActive = statusOption.toLowerCase() === task.status.toLowerCase();
+    const isActive = statusOption.toLowerCase() === String(displayStatus || "").toLowerCase();
 
     return (
       <button
         key={statusOption}
         type="button"
+        onClick={() => handleStatusChange(statusOption)}
+        disabled={isUpdatingStatus}
         style={{
           padding: `${t.spacing(1.5)} ${t.spacing(3)}`,
           borderRadius: "8px",
@@ -207,7 +645,8 @@ const TaskDetails = () => {
           color: isActive ? t.colors.primary : t.colors.textBodyDark,
           fontSize: t.font.size.sm,
           fontFamily: t.font.family,
-          cursor: "default",
+          cursor: isUpdatingStatus ? "not-allowed" : "pointer",
+          opacity: isUpdatingStatus ? 0.7 : 1,
         }}
       >
         {statusOption}
@@ -245,21 +684,35 @@ const TaskDetails = () => {
     );
   };
 
-  const renderComment = (comment) => (
-    <div
-      key={comment.id}
-      style={{
-        display: "flex",
-        alignItems: "flex-start",
-        gap: t.spacing(3),
-      }}
-    >
+  const renderComment = (comment, depth = 0) => {
+    const authorName = comment?.author?.name || comment?.author?.email || "Unknown";
+    const initials = initialsFrom(authorName) || "U";
+    const timestamp = formatTimestamp(comment?.created_at || comment?.created_at_col);
+    const isReplying = activeReplyToId && String(activeReplyToId) === String(comment?.id);
+    const isReply = Boolean(comment?.parent_comment_id);
+    const isSubmittingThisReply =
+      submittingReplyToId && String(submittingReplyToId) === String(comment?.id);
+    const isEditing = editingCommentId && String(editingCommentId) === String(comment?.id);
+    const isUpdating = updatingCommentId && String(updatingCommentId) === String(comment?.id);
+
+    return (
+      <div
+        key={comment.id}
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: t.spacing(3),
+          marginLeft: depth ? t.spacing(6) : 0,
+          paddingLeft: depth ? t.spacing(3) : 0,
+          borderLeft: depth ? `2px solid ${t.colors.cardBorder}` : "none",
+        }}
+      >
       <div
         style={{
           width: 40,
           height: 40,
           borderRadius: "999px",
-          backgroundColor: "#f97316",
+          backgroundColor: avatarColorFrom(comment?.author_id || authorName || comment?.id),
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -269,7 +722,7 @@ const TaskDetails = () => {
           flexShrink: 0,
         }}
       >
-        {comment.initials}
+        {initials}
       </div>
       <div
         style={{
@@ -291,7 +744,7 @@ const TaskDetails = () => {
               color: t.colors.textHeadingDark,
             }}
           >
-            {comment.author}
+            {authorName}
           </span>
           <span
             style={{
@@ -299,10 +752,76 @@ const TaskDetails = () => {
               color: t.colors.textMutedDark,
             }}
           >
-            {comment.timestamp}
+            {timestamp}
           </span>
         </div>
-        {comment.text && (
+        {isEditing ? (
+          <form onSubmit={saveEditComment(comment.id)} style={{ marginBottom: t.spacing(1) }}>
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              rows={3}
+              style={{
+                width: "100%",
+                resize: "vertical",
+                padding: t.spacing(3),
+                borderRadius: "12px",
+                border: `1px solid ${t.colors.blackBorder}`,
+                backgroundColor: "transparent",
+                fontFamily: t.font.family,
+                fontSize: t.font.size.sm,
+                color: t.colors.textBodyDark,
+                outline: "none",
+              }}
+            />
+            <div
+              style={{
+                marginTop: t.spacing(2),
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: t.spacing(2),
+              }}
+            >
+              <button
+                type="button"
+                onClick={cancelEditComment}
+                disabled={Boolean(isUpdating)}
+                style={{
+                  border: `1px solid ${t.colors.cardBorder}`,
+                  background: "#fff",
+                  color: t.colors.textHeadingDark,
+                  borderRadius: "999px",
+                  padding: `${t.spacing(1.25)} ${t.spacing(3)}`,
+                  cursor: Boolean(isUpdating) ? "not-allowed" : "pointer",
+                  fontSize: t.font.size.sm,
+                  opacity: Boolean(isUpdating) ? 0.7 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={Boolean(isUpdating) || !String(editText || "").trim()}
+                style={{
+                  padding: `${t.spacing(1.25)} ${t.spacing(3)}`,
+                  borderRadius: "999px",
+                  border: "none",
+                  backgroundColor: t.colors.buttonPrimary,
+                  color: t.colors.buttonText,
+                  fontSize: t.font.size.sm,
+                  fontWeight: t.font.weight.medium,
+                  cursor:
+                    Boolean(isUpdating) || !String(editText || "").trim()
+                      ? "not-allowed"
+                      : "pointer",
+                  opacity: Boolean(isUpdating) || !String(editText || "").trim() ? 0.7 : 1,
+                }}
+              >
+                {Boolean(isUpdating) ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </form>
+        ) : comment.content ? (
           <p
             style={{
               margin: 0,
@@ -311,9 +830,9 @@ const TaskDetails = () => {
               color: t.colors.textBodyDark,
             }}
           >
-            {comment.text}
+            {comment.content}
           </p>
-        )}
+        ) : null}
 
         {comment.attachments && comment.attachments.length > 0 && (
           <div
@@ -392,29 +911,95 @@ const TaskDetails = () => {
             ))}
           </div>
         )}
-        <button
-          type="button"
-          style={{
-            border: "none",
-            background: "none",
-            padding: 0,
-            fontSize: t.font.size.xs,
-            color: t.colors.link,
-            cursor: "pointer",
-          }}
-        >
-          Reply
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: t.spacing(2) }}>
+          {!isReply ? (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveReplyToId(comment?.id || null);
+                setReplyText("");
+                setReplyAttachments([]);
+                setEditingCommentId(null);
+                setEditText("");
+              }}
+              style={{
+                border: "none",
+                background: "none",
+                padding: 0,
+                fontSize: t.font.size.xs,
+                color: t.colors.link,
+                cursor: "pointer",
+              }}
+            >
+              Reply
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={() => startEditComment(comment)}
+            style={{
+              border: "none",
+              background: "none",
+              padding: 0,
+              fontSize: t.font.size.xs,
+              color: t.colors.link,
+              cursor: "pointer",
+            }}
+          >
+            Edit
+          </button>
+        </div>
+
+        {isReplying && (
+          <div style={{ marginTop: t.spacing(2) }}>
+            <CommentComposer
+              t={t}
+              attachmentIcon={attachmentIcon}
+              value={replyText}
+              onChange={setReplyText}
+              onSubmit={handleAddReply(comment.id)}
+              isSubmitting={Boolean(isSubmittingThisReply)}
+              attachments={replyAttachments}
+              onRemoveAttachment={(idx) =>
+                setReplyAttachments((prev) => prev.filter((_, i) => i !== idx))
+              }
+              onAddAttachmentClick={handleReplyAttachmentClick}
+              fileInputRef={replyFileInputRef}
+              onFilesSelected={handleReplyFilesSelected}
+              placeholder="Write a reply..."
+              submitLabel="Reply"
+              openLocalAttachment={openLocalAttachment}
+              getCommentAttachmentIcon={getCommentAttachmentIcon}
+            />
+          </div>
+        )}
       </div>
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <OrganisationLayout
       organisationName={breadcrumbLabel}
-      pageTitle={task.title}
+      pageTitle={currentTask.title || "Task Details"}
       showSidebar={false}
     >
+      {error && (
+        <div
+          style={{
+            marginBottom: t.spacing(3),
+            padding: t.spacing(2),
+            borderRadius: t.radius.card,
+            backgroundColor: "#fee2e2",
+            color: "#b91c1c",
+            fontSize: t.font.size.sm,
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       {/* Status row */}
       <div
         style={{
@@ -471,7 +1056,7 @@ const TaskDetails = () => {
                     {
                       state: {
                         projectName,
-                        task,
+                        task: currentTask,
                       },
                     }
                   )
@@ -491,17 +1076,42 @@ const TaskDetails = () => {
                 />
               </button>
             </div>
-            <p
-              style={{
-                margin: 0,
-                marginBottom: t.spacing(4),
-                color: t.colors.textBodyDark,
-                fontSize: t.font.size.sm,
-                lineHeight: 1.6,
-              }}
-            >
-              {task.description}
-            </p>
+            {isLoading && !currentTask.title ? (
+              <div
+                style={{
+                  margin: 0,
+                  marginBottom: t.spacing(4),
+                  color: t.colors.textMutedDark,
+                  fontSize: t.font.size.sm,
+                }}
+              >
+                Loading task details...
+              </div>
+            ) : hasDescription ? (
+              <div
+                style={{
+                  margin: 0,
+                  marginBottom: t.spacing(4),
+                  color: t.colors.textBodyDark,
+                  fontSize: t.font.size.sm,
+                  lineHeight: 1.6,
+                }}
+                // Quill stores HTML; we render it as-is for rich text display.
+                dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+              />
+            ) : (
+              <p
+                style={{
+                  margin: 0,
+                  marginBottom: t.spacing(4),
+                  color: t.colors.textMutedDark,
+                  fontSize: t.font.size.sm,
+                  lineHeight: 1.6,
+                }}
+              >
+                No description provided.
+              </p>
+            )}
             <div
               style={{
                 marginBottom: t.spacing(4),
@@ -518,7 +1128,7 @@ const TaskDetails = () => {
               >
                 Attachments
               </h4>
-              <AttachmentList attachments={task.attachments} />
+              <AttachmentList attachments={currentTask.attachments || []} />
             </div>
             <div
               style={{
@@ -580,7 +1190,7 @@ const TaskDetails = () => {
                     width: 40,
                     height: 40,
                     borderRadius: "999px",
-                    backgroundColor: "#3b82f6",
+                    backgroundColor: assigneeAvatarColor,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -589,7 +1199,7 @@ const TaskDetails = () => {
                     fontSize: t.font.size.sm,
                   }}
                 >
-                  {task.assignee.initials}
+                  {assigneeInitials}
                 </div>
                 <div>
                   <div
@@ -599,7 +1209,7 @@ const TaskDetails = () => {
                       color: t.colors.textHeadingDark,
                     }}
                   >
-                    {task.assignee.name}
+                    {assigneeName}
                   </div>
                   <div
                     style={{
@@ -607,7 +1217,7 @@ const TaskDetails = () => {
                       color: t.colors.textMutedDark,
                     }}
                   >
-                    Product Designer
+                    {currentTask.assignee?.email || ""}
                   </div>
                 </div>
               </div>
@@ -642,7 +1252,7 @@ const TaskDetails = () => {
                     fontWeight: t.font.weight.semiBold,
                   }}
                 >
-                  {task.dueDate}
+                  {dueDateLabel || "—"}
                 </span>
               </div>
               <div
@@ -653,7 +1263,7 @@ const TaskDetails = () => {
                 }}
               >
                 <span>Priority</span>
-                {renderPriorityBadge(task.priority)}
+                {renderPriorityBadge(displayPriority)}
               </div>
             </div>
           </div>
@@ -662,202 +1272,40 @@ const TaskDetails = () => {
 
       {/* Full-width activity section */}
       <DashboardSectionCard title="Activity">
-        <form onSubmit={handleAddComment}>
+        {commentsError && (
           <div
             style={{
-              display: "flex",
-              gap: t.spacing(3),
-              marginBottom: t.spacing(4),
+              marginBottom: t.spacing(3),
+              padding: t.spacing(2),
+              borderRadius: t.radius.card,
+              backgroundColor: "#fee2e2",
+              color: "#b91c1c",
+              fontSize: t.font.size.sm,
             }}
           >
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "999px",
-                backgroundColor: "#3b82f6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "#ffffff",
-                fontWeight: t.font.weight.semiBold,
-                fontSize: t.font.size.sm,
-                flexShrink: 0,
-              }}
-            >
-              Y
-            </div>
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  position: "relative",
-                }}
-              >
-                <textarea
-                  value={newComment}
-                  onChange={(event) => setNewComment(event.target.value)}
-                  placeholder="Add a comment..."
-                  rows={3}
-                  style={{
-                    width: "100%",
-                    resize: "vertical",
-                    padding: t.spacing(3),
-                    paddingRight: t.spacing(8),
-                    borderRadius: "12px",
-                    border: `1px solid ${t.colors.blackBorder}`,
-                    backgroundColor: "transparent",
-                    fontFamily: t.font.family,
-                    fontSize: t.font.size.sm,
-                    color: t.colors.textBodyDark,
-                    outline: "none",
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={handleCommentAttachmentClick}
-                  style={{
-                    position: "absolute",
-                    right: t.spacing(3),
-                    bottom: t.spacing(2.5),
-                    border: "none",
-                    background: "none",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                  aria-label="Add attachment"
-                >
-                  <img
-                    src={attachmentIcon}
-                    alt="Attachment"
-                    style={{ width: 18, height: 18, objectFit: "contain" }}
-                  />
-                </button>
-                <input
-                  ref={commentFileInputRef}
-                  type="file"
-                  multiple
-                  style={{ display: "none" }}
-                  onChange={handleCommentFilesSelected}
-                />
-              </div>
-
-              <div
-                style={{
-                  marginTop: t.spacing(2),
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "stretch",
-                  gap: t.spacing(2),
-                }}
-              >
-                {commentAttachments.length > 0 && (
-                  <div
-                    style={{
-                      display: "flex",
-                      flexWrap: "wrap",
-                      gap: t.spacing(1.5),
-                    }}
-                  >
-                    {commentAttachments.map((file, index) => (
-                      <div
-                        key={`${file.name}-${index}`}
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          padding: `${t.spacing(1)} ${t.spacing(1.75)}`,
-                          borderRadius: "999px",
-                          backgroundColor: "transparent",
-                          color: t.colors.textBodyDark,
-                          fontSize: t.font.size.xs,
-                          gap: t.spacing(1),
-                          maxWidth: 260,
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => openLocalAttachment(file)}
-                          style={{
-                            border: "none",
-                            background: "none",
-                            padding: 0,
-                            margin: 0,
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: t.spacing(1),
-                            cursor: "pointer",
-                            maxWidth: "100%",
-                          }}
-                        >
-                          <img
-                            src={getCommentAttachmentIcon(file)}
-                            alt="Attachment"
-                            style={{
-                              width: 14,
-                              height: 14,
-                              objectFit: "contain",
-                            }}
-                          />
-                          <span
-                            title={file.name}
-                            style={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                            }}
-                          >
-                            {file.name}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setCommentAttachments((prev) =>
-                              prev.filter((_, i) => i !== index)
-                            )
-                          }
-                          style={{
-                            marginLeft: t.spacing(0.5),
-                            border: "none",
-                            background: "none",
-                            cursor: "pointer",
-                            padding: 0,
-                            fontSize: t.font.size.xs,
-                          }}
-                          aria-label={`Remove ${file.name}`}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <button
-                    type="submit"
-                    style={{
-                      padding: `${t.spacing(1.5)} ${t.spacing(3.5)}`,
-                      borderRadius: "999px",
-                      border: "none",
-                      backgroundColor: t.colors.buttonPrimary,
-                      color: t.colors.buttonText,
-                      fontSize: t.font.size.sm,
-                      fontWeight: t.font.weight.medium,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Comment
-                  </button>
-                </div>
-              </div>
-            </div>
+            {commentsError}
           </div>
-        </form>
+        )}
+
+        <CommentComposer
+          t={t}
+          attachmentIcon={attachmentIcon}
+          value={newComment}
+          onChange={setNewComment}
+          onSubmit={handleAddComment}
+          isSubmitting={isSubmittingComment}
+          attachments={commentAttachments}
+          onRemoveAttachment={(idx) =>
+            setCommentAttachments((prev) => prev.filter((_, i) => i !== idx))
+          }
+          onAddAttachmentClick={handleCommentAttachmentClick}
+          fileInputRef={commentFileInputRef}
+          onFilesSelected={handleCommentFilesSelected}
+          placeholder="Add a comment..."
+          submitLabel="Comment"
+          openLocalAttachment={openLocalAttachment}
+          getCommentAttachmentIcon={getCommentAttachmentIcon}
+        />
 
         <div
           style={{
@@ -866,7 +1314,26 @@ const TaskDetails = () => {
             gap: t.spacing(4),
           }}
         >
-          {comments.map((comment) => renderComment(comment))}
+          {isCommentsLoading ? (
+            <div style={{ color: t.colors.textMutedDark, fontSize: t.font.size.sm }}>
+              Loading comments...
+            </div>
+          ) : commentThreads.length === 0 ? (
+            <div style={{ color: t.colors.textMutedDark, fontSize: t.font.size.sm }}>
+              No comments yet.
+            </div>
+          ) : (
+            commentThreads.map((c) => (
+              <div key={c.id}>
+                {renderComment(c, 0)}
+                {Array.isArray(c.children) && c.children.length > 0 ? (
+                  <div style={{ marginTop: t.spacing(2), display: "flex", flexDirection: "column", gap: t.spacing(3) }}>
+                    {c.children.map((child) => renderComment(child, 1))}
+                  </div>
+                ) : null}
+              </div>
+            ))
+          )}
         </div>
       </DashboardSectionCard>
     </OrganisationLayout>

@@ -44,6 +44,10 @@ export const API_ENDPOINTS = {
     LIST: '/tasks',
     CREATE: '/tasks',
   },
+  COMMENT: {
+    LIST: '/comments',
+    CREATE: '/comments',
+  },
 }
 
 /**

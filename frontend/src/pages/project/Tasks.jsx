@@ -26,8 +26,7 @@ const normalizeStatusToColumnId = (value) => {
   const norm = v.replace(/\s+/g, "_");
   if (norm === "to_do" || norm === "todo") return "todo";
   if (norm === "in_progress" || norm === "in-progress") return "in-progress";
-  // backend uses "blocked" enum; we show it under "In Review" column for now
-  if (norm === "in_review" || norm === "blocked") return "in-review";
+  if (norm === "in_review") return "in-review";
   if (norm === "done") return "done";
   return "todo";
 };
