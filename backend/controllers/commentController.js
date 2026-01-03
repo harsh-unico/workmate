@@ -3,6 +3,7 @@
 const commentRepository = require('../repositories/commentRepository');
 const taskRepository = require('../repositories/taskRepository');
 const userRepository = require('../repositories/userRepository');
+const attachmentRepository = require('../repositories/attachmentRepository');
 
 async function handle(controllerFn, req, res) {
   try {
@@ -49,7 +50,28 @@ function listComments(req, res) {
       author: c.author_id ? authorsById.get(String(c.author_id)) || null : null
     }));
 
-    return { data: withAuthor };
+    const commentIds = withAuthor.map((c) => c.id).filter(Boolean).map(String);
+    const attachments = await attachmentRepository.findManyByEntityIds('comment', commentIds);
+    const byEntityId = new Map();
+    for (const a of attachments || []) {
+      const eid = String(a.entity_id || '');
+      if (!eid) continue;
+      if (!byEntityId.has(eid)) byEntityId.set(eid, []);
+      byEntityId.get(eid).push({
+        id: a.id,
+        name: a.file_name || 'attachment',
+        size: a.file_size ?? undefined,
+        type: '',
+        url: a.file_url || undefined
+      });
+    }
+
+    const withAttachments = withAuthor.map((c) => ({
+      ...c,
+      attachments: byEntityId.get(String(c.id)) || []
+    }));
+
+    return { data: withAttachments };
   }, req, res);
 }
 

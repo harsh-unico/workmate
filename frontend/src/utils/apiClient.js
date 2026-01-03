@@ -84,10 +84,11 @@ class ApiClient {
    * Make POST request
    */
   async post(endpoint, data, options = {}) {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
-      headers: this.getHeaders(options.headers),
-      body: JSON.stringify(data),
+      headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
+      body: isFormData ? data : JSON.stringify(data),
       credentials: 'include',
       ...options,
     })
@@ -99,10 +100,11 @@ class ApiClient {
    * Make PUT request
    */
   async put(endpoint, data, options = {}) {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'PUT',
-      headers: this.getHeaders(options.headers),
-      body: JSON.stringify(data),
+      headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
+      body: isFormData ? data : JSON.stringify(data),
       credentials: 'include',
       ...options,
     })
@@ -114,10 +116,11 @@ class ApiClient {
    * Make PATCH request
    */
   async patch(endpoint, data, options = {}) {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
     const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'PATCH',
-      headers: this.getHeaders(options.headers),
-      body: JSON.stringify(data),
+      headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
+      body: isFormData ? data : JSON.stringify(data),
       credentials: 'include',
       ...options,
     })

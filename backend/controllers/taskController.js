@@ -3,7 +3,38 @@
 const taskRepository = require('../repositories/taskRepository');
 const userRepository = require('../repositories/userRepository');
 const projectMemberRepository = require('../repositories/projectMemberRepository');
+const attachmentRepository = require('../repositories/attachmentRepository');
+const commentRepository = require('../repositories/commentRepository');
+const { supabase, supabaseAdmin } = require('../config/supabase');
 const { TASK_PRIORITY, TASK_STATUS } = require('../enums');
+
+const storageClient = supabaseAdmin || supabase;
+
+async function bestEffortRemoveStorageObjects(attachmentRows) {
+  const rows = Array.isArray(attachmentRows) ? attachmentRows : [];
+  const byBucket = new Map();
+
+  for (const a of rows) {
+    const url = String(a?.file_url || '');
+    const m = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+    if (!m || !m[1] || !m[2]) continue;
+    const bucket = m[1];
+    const key = m[2];
+    if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+    byBucket.get(bucket).push(key);
+  }
+
+  for (const [bucket, keys] of byBucket.entries()) {
+    try {
+      if (keys.length) {
+        // Supabase storage remove accepts an array of paths
+        await storageClient.storage.from(bucket).remove(keys);
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
 
 async function handle(controllerFn, req, res) {
   try {
@@ -153,7 +184,28 @@ function listTasks(req, res) {
       assignee: task.assignee_id ? (assigneesById.get(String(task.assignee_id)) || null) : null
     }));
 
-    return { data: withAssignee };
+    const taskIds = (withAssignee || []).map((t) => t.id).filter(Boolean).map(String);
+    const attachments = await attachmentRepository.findManyByEntityIds('task', taskIds);
+    const byTaskId = new Map();
+    for (const a of attachments || []) {
+      const tid = String(a.entity_id || '');
+      if (!tid) continue;
+      if (!byTaskId.has(tid)) byTaskId.set(tid, []);
+      byTaskId.get(tid).push({
+        id: a.id,
+        name: a.file_name || 'attachment',
+        size: a.file_size ?? undefined,
+        type: '',
+        url: a.file_url || undefined
+      });
+    }
+
+    const withAttachments = (withAssignee || []).map((t) => ({
+      ...t,
+      attachments: byTaskId.get(String(t.id)) || []
+    }));
+
+    return { data: withAttachments };
   }, req, res);
 }
 
@@ -211,7 +263,19 @@ function getTaskById(req, res) {
       }
     }
 
-    return { data: { ...task, assignee } };
+    const attachments = await attachmentRepository.findMany({
+      entity_type: 'task',
+      entity_id: String(task.id)
+    });
+    const mappedAttachments = (attachments || []).map((a) => ({
+      id: a.id,
+      name: a.file_name || 'attachment',
+      size: a.file_size ?? undefined,
+      type: '',
+      url: a.file_url || undefined
+    }));
+
+    return { data: { ...task, assignee, attachments: mappedAttachments } };
   }, req, res);
 }
 
@@ -278,14 +342,39 @@ function deleteTaskById(req, res) {
       throw error;
     }
 
-    const deleted = await taskRepository.deleteById(id);
-    if (!deleted) {
+    const existing = await taskRepository.findById(id);
+    if (!existing) {
       const error = new Error('Task not found');
       error.statusCode = 404;
       throw error;
     }
 
-    return { data: deleted };
+    // 1) Fetch comments for the task (so we can delete their attachments too)
+    const comments = await commentRepository.findMany({ task_id: id });
+    const commentIds = (comments || []).map((c) => c.id).filter(Boolean).map(String);
+
+    // 2) Delete attachments (task + comments) and remove objects from storage (best-effort)
+    const deletedTaskAttachments = await attachmentRepository.deleteManyByEntityIds('task', [id]);
+    const deletedCommentAttachments =
+      commentIds.length > 0
+        ? await attachmentRepository.deleteManyByEntityIds('comment', commentIds)
+        : [];
+
+    await bestEffortRemoveStorageObjects([...(deletedTaskAttachments || []), ...(deletedCommentAttachments || [])]);
+
+    // 3) Delete comments
+    const deletedComments = await commentRepository.deleteMany({ task_id: id });
+
+    // 4) Delete task row
+    const deletedTask = await taskRepository.deleteById(id);
+
+    return {
+      data: deletedTask,
+      deleted: {
+        comments: (deletedComments || []).length,
+        attachments: (deletedTaskAttachments || []).length + (deletedCommentAttachments || []).length
+      }
+    };
   }, req, res);
 }
 

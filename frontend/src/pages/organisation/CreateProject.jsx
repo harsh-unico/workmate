@@ -10,6 +10,7 @@ import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import { createProject } from "../../services/projectService";
 import { getOrganisationById, getOrganisationMembers } from "../../services/orgService";
+import { uploadAttachments } from "../../services/attachmentService";
 
 const readRichTextHtml = (rootId) => {
   try {
@@ -121,8 +122,26 @@ const CreateProject = () => {
         };
         // eslint-disable-next-line no-console
         console.log("Create project payload:", payload);
-        await createProject(payload);
-    navigate(returnTo || `/organisations/${id}/projects`);
+        const createdRes = await createProject(payload);
+        const createdProject = createdRes?.data || null;
+
+        // Upload attachments (after we have project id)
+        const files = Array.isArray(formData.attachments) ? formData.attachments : [];
+        if (createdProject?.id && files.length > 0) {
+          try {
+            await uploadAttachments({
+              files,
+              entityType: "project",
+              entityId: createdProject.id,
+            });
+          } catch (e) {
+            // non-blocking: project is created, attachments failed
+            // eslint-disable-next-line no-console
+            console.error("Failed to upload project attachments:", e);
+          }
+        }
+
+        navigate(returnTo || `/organisations/${id}/projects`);
       } catch (err) {
         console.error("Failed to create project:", err);
         setError(err?.message || "Failed to create project.");

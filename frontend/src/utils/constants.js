@@ -48,6 +48,10 @@ export const API_ENDPOINTS = {
     LIST: '/comments',
     CREATE: '/comments',
   },
+  ATTACHMENT: {
+    UPLOAD: '/attachments/upload',
+    LIST: '/attachments',
+  },
 }
 
 /**

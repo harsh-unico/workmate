@@ -10,12 +10,13 @@ import imageIcon from "../../assets/icons/imageIcon.png";
 import downloadIcon from "../../assets/icons/download.png";
 import { getOrganisationById } from "../../services/orgService";
 import { getProjectById } from "../../services/projectService";
-import { getTaskById, updateTaskById } from "../../services/taskService";
+import { deleteTaskById, getTaskById, updateTaskById } from "../../services/taskService";
 import {
   createComment,
   listComments as listTaskComments,
   updateCommentById as updateCommentByIdApi,
 } from "../../services/commentService";
+import { uploadAttachments } from "../../services/attachmentService";
 
 const STATUS_OPTIONS = ["To do", "In Progress", "In Review", "Done"];
 
@@ -290,6 +291,7 @@ const TaskDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   useEffect(() => {
     const orgId = id;
@@ -422,6 +424,25 @@ const TaskDetails = () => {
     }
   };
 
+  const handleDeleteTask = async () => {
+    if (!taskId) return;
+    if (isDeletingTask) return;
+
+    const ok = window.confirm("Delete this task? This will also delete its comments and attachments.");
+    if (!ok) return;
+
+    setIsDeletingTask(true);
+    setError("");
+    try {
+      await deleteTaskById(taskId);
+      handleBack();
+    } catch (e) {
+      setError(e?.message || "Failed to delete task.");
+    } finally {
+      setIsDeletingTask(false);
+    }
+  };
+
   const refreshComments = useCallback(async () => {
     if (!taskId) return;
     setIsCommentsLoading(true);
@@ -453,6 +474,18 @@ const TaskDetails = () => {
   const openLocalAttachment = (file) => {
     if (!file) return;
 
+    // If attachment came from DB, it'll have a url
+    if (file?.url) {
+      try {
+        window.open(file.url, "_blank", "noopener,noreferrer");
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to open attachment:", error);
+      }
+      return;
+    }
+
+    // Otherwise treat as local File
     try {
       const url = URL.createObjectURL(file);
       window.open(url, "_blank", "noopener,noreferrer");
@@ -466,6 +499,23 @@ const TaskDetails = () => {
   const downloadLocalAttachment = (file) => {
     if (!file) return;
 
+    // If attachment came from DB, it'll have a url
+    if (file?.url) {
+      try {
+        const link = document.createElement("a");
+        link.href = file.url;
+        link.download = file.name || "attachment";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        // eslint-disable-next-line no-console
+        console.error("Failed to download attachment:", error);
+      }
+      return;
+    }
+
+    // Otherwise treat as local File
     try {
       const url = URL.createObjectURL(file);
       const link = document.createElement("a");
@@ -522,7 +572,23 @@ const TaskDetails = () => {
       setCommentsError("");
       setIsSubmittingComment(true);
       try {
-        await createComment({ taskId, content: value });
+        const files = Array.isArray(commentAttachments) ? commentAttachments : [];
+        const created = await createComment({ taskId, content: value });
+        const createdComment = created?.data || null;
+
+        if (createdComment?.id && files.length > 0) {
+          try {
+            await uploadAttachments({
+              files,
+              entityType: "comment",
+              entityId: createdComment.id,
+            });
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error("Failed to upload comment attachments:", e);
+          }
+        }
+
         setNewComment("");
         setCommentAttachments([]);
         await refreshComments();
@@ -545,7 +611,23 @@ const TaskDetails = () => {
       setCommentsError("");
       setSubmittingReplyToId(parentId);
       try {
-        await createComment({ taskId, content: value, parentCommentId: parentId });
+        const files = Array.isArray(replyAttachments) ? replyAttachments : [];
+        const created = await createComment({ taskId, content: value, parentCommentId: parentId });
+        const createdReply = created?.data || null;
+
+        if (createdReply?.id && files.length > 0) {
+          try {
+            await uploadAttachments({
+              files,
+              entityType: "comment",
+              entityId: createdReply.id,
+            });
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.error("Failed to upload reply attachments:", e);
+          }
+        }
+
         setReplyText("");
         setReplyAttachments([]);
         setActiveReplyToId(null);
@@ -1139,6 +1221,8 @@ const TaskDetails = () => {
             >
               <button
                 type="button"
+                onClick={handleDeleteTask}
+                disabled={isDeletingTask}
                 style={{
                   padding: `${t.spacing(2)} ${t.spacing(4)}`,
                   borderRadius: "10px",
@@ -1147,10 +1231,11 @@ const TaskDetails = () => {
                   color: "#ffffff",
                   fontSize: t.font.size.sm,
                   fontWeight: t.font.weight.medium,
-                  cursor: "pointer",
+                  cursor: isDeletingTask ? "not-allowed" : "pointer",
+                  opacity: isDeletingTask ? 0.7 : 1,
                 }}
               >
-                Delete Task
+                {isDeletingTask ? "Deleting..." : "Delete Task"}
               </button>
             </div>
           </div>

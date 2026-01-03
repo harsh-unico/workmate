@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import { StatsCard, DashboardSectionCard } from "../../components";
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
+import AboutProjectPopup from "./AboutProjectPopup";
+import { getOrganisationById } from "../../services/orgService";
+import { getProjectById } from "../../services/projectService";
 
 const ProjectOverview = () => {
   const t = useTheme();
@@ -11,8 +14,35 @@ const ProjectOverview = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [orgName, setOrgName] = useState("Organisation");
+  const [project, setProject] = useState(null);
+  const [projectError, setProjectError] = useState("");
+  const [isAboutPopupOpen, setIsAboutPopupOpen] = useState(false);
 
-  const organisationName = "Quantum Solutions";
+  useEffect(() => {
+    if (!id || !projectId) return;
+    let cancelled = false;
+    setProjectError("");
+    (async () => {
+      try {
+        const [orgRes, projRes] = await Promise.all([
+          getOrganisationById(id),
+          getProjectById(projectId),
+        ]);
+        if (cancelled) return;
+        setOrgName(orgRes?.data?.org_name || "Organisation");
+        setProject(projRes?.data || null);
+      } catch (e) {
+        if (cancelled) return;
+        setOrgName("Organisation");
+        setProject(null);
+        setProjectError(e?.message || "Failed to load project.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [id, projectId]);
 
   const projectNameFromState = location.state?.projectName;
   const derivedProjectName =
@@ -23,9 +53,24 @@ const ProjectOverview = () => {
           .join(" ")
       : "Project Alpha";
 
-  const projectName = projectNameFromState || derivedProjectName;
+  const projectName = project?.name || projectNameFromState || derivedProjectName;
 
-  const headerTitle = `${organisationName} / ${projectName} /`;
+  const headerTitle = `${orgName || "Organisation"} / ${projectName || "Project"} /`;
+
+  const descriptionHtml = useMemo(() => {
+    const d =
+      typeof project?.description === "string"
+        ? project.description
+        : typeof project?.about === "string"
+          ? project.about
+          : "";
+    return d;
+  }, [project]);
+
+  const hasAbout =
+    typeof descriptionHtml === "string" &&
+    descriptionHtml.trim() !== "" &&
+    descriptionHtml.trim() !== "<p><br></p>";
 
   const overallProgressValue =
     typeof location.state?.overallProgress === "number"
@@ -133,6 +178,56 @@ const ProjectOverview = () => {
             />
           ))}
         </div>
+
+        {/* About Project (rich text preview like org overview) */}
+        <DashboardSectionCard
+          title={`About ${projectName || "Project"}`}
+          actionLabel="Read More..."
+          onAction={() => setIsAboutPopupOpen(true)}
+          actionPlacement="bottom-right"
+        >
+          {projectError && (
+            <div
+              style={{
+                padding: t.spacing(2),
+                borderRadius: t.radius.card,
+                backgroundColor: "#fee2e2",
+                color: "#b91c1c",
+                marginBottom: t.spacing(2),
+              }}
+            >
+              {projectError}
+            </div>
+          )}
+
+          {hasAbout ? (
+            <div
+              style={{
+                margin: 0,
+                marginBottom: t.spacing(2),
+                color: t.colors.textBodyDark,
+                lineHeight: 1.6,
+                fontSize: t.font.size.md,
+                maxHeight: "110px",
+                overflow: "hidden",
+              }}
+              // Quill stores HTML; we render it as-is for rich text preview.
+              dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+            />
+          ) : (
+            <p
+              style={{
+                margin: 0,
+                marginBottom: t.spacing(2),
+                color: t.colors.textMutedDark,
+                lineHeight: 1.6,
+                fontSize: t.font.size.md,
+              }}
+            >
+              No description provided.
+            </p>
+          )}
+        </DashboardSectionCard>
 
         {/* Bottom Content Row */}
         <div
@@ -256,6 +351,14 @@ const ProjectOverview = () => {
             </div>
           </DashboardSectionCard>
         </div>
+
+        <AboutProjectPopup
+          isOpen={isAboutPopupOpen}
+          onClose={() => setIsAboutPopupOpen(false)}
+          projectName={projectName || "Project"}
+          descriptionHtml={descriptionHtml || ""}
+          error={projectError}
+        />
       </div>
     </OrganisationLayout>
   );

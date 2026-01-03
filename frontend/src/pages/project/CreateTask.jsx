@@ -8,6 +8,7 @@ import { createTask } from "../../services/taskService";
 import { getOrganisationById } from "../../services/orgService";
 import { getProjectById } from "../../services/projectService";
 import { listProjectMembers } from "../../services/projectMemberService";
+import { uploadAttachments } from "../../services/attachmentService";
 
 const readRichTextHtml = (rootId) => {
   try {
@@ -168,7 +169,24 @@ const CreateTask = () => {
           assigneeEmail: assigneeEmail || undefined,
         };
 
-        await createTask(payload);
+        const createdRes = await createTask(payload);
+        const createdTask = createdRes?.data || null;
+
+        // Upload attachments (after we have task id)
+        const files = Array.isArray(formData.attachments) ? formData.attachments : [];
+        if (createdTask?.id && files.length > 0) {
+          try {
+            await uploadAttachments({
+              files,
+              entityType: "task",
+              entityId: createdTask.id,
+            });
+          } catch (e) {
+            // non-blocking: task is created, attachments failed
+            console.error("Failed to upload task attachments:", e);
+          }
+        }
+
         navigate(returnTo || `/organisations/${id}/projects/${projectId}/tasks`);
       } catch (err) {
         console.error("Failed to create task:", err);

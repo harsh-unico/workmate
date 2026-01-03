@@ -32,4 +32,9 @@ export const updateTaskById = async (taskId, payload = {}) => {
   )
 }
 
+export const deleteTaskById = async (taskId) => {
+  if (!taskId) throw new Error('taskId is required')
+  return apiClient.delete(`${API_ENDPOINTS.TASK.LIST}/${encodeURIComponent(String(taskId))}`)
+}
+
 
