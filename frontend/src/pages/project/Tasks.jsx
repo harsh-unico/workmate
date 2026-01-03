@@ -12,6 +12,7 @@ import addIcon from "../../assets/icons/addIcon.png";
 import { getOrganisationById } from "../../services/orgService";
 import { getProjectById } from "../../services/projectService";
 import { listTasks } from "../../services/taskService";
+import { updateTaskById } from "../../services/taskService";
 
 const COLUMN_DEFS = [
   { id: "todo", title: "To Do" },
@@ -19,6 +20,15 @@ const COLUMN_DEFS = [
   { id: "in-review", title: "In Review" },
   { id: "done", title: "Done" },
 ];
+
+const columnIdToStatus = (columnId) => {
+  const v = String(columnId || "").trim().toLowerCase();
+  if (v === "todo") return "todo";
+  if (v === "in-progress" || v === "in_progress") return "in_progress";
+  if (v === "in-review" || v === "in_review") return "in_review";
+  if (v === "done") return "done";
+  return "todo";
+};
 
 const normalizeStatusToColumnId = (value) => {
   const v = String(value || "").trim().toLowerCase();
@@ -72,6 +82,8 @@ const ProjectTasks = () => {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dragOverColumnId, setDragOverColumnId] = useState(null);
+  const [isUpdatingTaskId, setIsUpdatingTaskId] = useState(null);
 
   useEffect(() => {
     const orgId = id;
@@ -201,16 +213,68 @@ const ProjectTasks = () => {
 
   const renderTaskCard = (task) => {
     return (
-      <TaskCard
+      <div
         key={task.id}
-        priority={task.priority}
-        title={task.title}
-        dueDate={task.due}
-        assigneeInitials={task.assigneeInitials}
-        avatarColor={task.avatarColor}
-        onClick={() => handleTaskClick(task)}
-      />
+        draggable
+        onDragStart={(e) => {
+          try {
+            e.dataTransfer.setData("text/plain", String(task.id));
+            e.dataTransfer.effectAllowed = "move";
+          } catch {
+            // ignore
+          }
+        }}
+        style={{
+          opacity: isUpdatingTaskId && String(isUpdatingTaskId) === String(task.id) ? 0.7 : 1,
+          cursor: "grab",
+        }}
+        aria-label={`Task ${task.title}`}
+      >
+        <TaskCard
+          priority={task.priority}
+          title={task.title}
+          dueDate={task.due}
+          assigneeInitials={task.assigneeInitials}
+          avatarColor={task.avatarColor}
+          onClick={() => handleTaskClick(task)}
+        />
+      </div>
     );
+  };
+
+  const handleDropToColumn = async (columnId, draggedTaskId) => {
+    const status = columnIdToStatus(columnId);
+    if (!draggedTaskId) return;
+
+    const prevTasks = tasks;
+    const idx = (tasks || []).findIndex((t) => String(t?.id) === String(draggedTaskId));
+    if (idx < 0) return;
+
+    const current = tasks[idx];
+    if (String(current?.status || "").toLowerCase() === status) return;
+
+    setError("");
+    setIsUpdatingTaskId(draggedTaskId);
+
+    // optimistic update
+    const next = [...tasks];
+    next[idx] = { ...current, status };
+    setTasks(next);
+
+    try {
+      const res = await updateTaskById(draggedTaskId, { status });
+      const updated = res?.data || null;
+      if (updated) {
+        setTasks((cur) =>
+          (cur || []).map((t) => (String(t?.id) === String(draggedTaskId) ? { ...t, ...updated } : t))
+        );
+      }
+    } catch (e) {
+      setTasks(prevTasks);
+      setError(e?.message || "Failed to update task status.");
+    } finally {
+      setIsUpdatingTaskId(null);
+    }
   };
 
   const handleClearFilters = () => {
@@ -313,6 +377,17 @@ const ProjectTasks = () => {
           filteredColumns.map((column) => (
           <div
             key={column.id}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOverColumnId(column.id);
+            }}
+            onDragLeave={() => setDragOverColumnId(null)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOverColumnId(null);
+              const draggedTaskId = e.dataTransfer.getData("text/plain");
+              handleDropToColumn(column.id, draggedTaskId);
+            }}
             style={{
               backgroundColor: t.colors.taskSectionBackground,
               borderRadius: "18px",
@@ -321,6 +396,11 @@ const ProjectTasks = () => {
               display: "flex",
               flexDirection: "column",
               gap: t.spacing(3),
+              outline:
+                dragOverColumnId && String(dragOverColumnId) === String(column.id)
+                  ? `2px dashed ${t.colors.primary}`
+                  : "none",
+              outlineOffset: 4,
             }}
           >
             <div

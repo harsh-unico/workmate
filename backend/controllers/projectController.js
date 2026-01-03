@@ -5,6 +5,7 @@ const projectMemberRepository = require('../repositories/projectMemberRepository
 const { PROJECT_MEMBER_ROLE } = require('../enums');
 const userRepository = require('../repositories/userRepository');
 const orgMemberRepository = require('../repositories/orgMemberRepository');
+const attachmentRepository = require('../repositories/attachmentRepository');
 
 async function handle(controllerFn, req, res) {
   try {
@@ -40,6 +41,22 @@ async function requireProjectMember(req, projectId) {
     throw error;
   }
   return membership;
+}
+
+async function requireProjectAdmin(req, projectId) {
+  const userId = req.user && req.user.id ? String(req.user.id) : null;
+  if (!userId) {
+    const error = new Error('Not authenticated');
+    error.statusCode = 401;
+    throw error;
+  }
+  const roles = [PROJECT_MEMBER_ROLE.OWNER, PROJECT_MEMBER_ROLE.MANAGER];
+  const adminProjectIds = await projectMemberRepository.findAdminProjectIdsForUser(userId, { roles });
+  if (!adminProjectIds.includes(String(projectId))) {
+    const error = new Error('Forbidden');
+    error.statusCode = 403;
+    throw error;
+  }
 }
 
 function createProject(req, res) {
@@ -187,7 +204,75 @@ function getProjectById(req, res) {
       throw error;
     }
 
-    return { data: project };
+    const attachments = await attachmentRepository.findMany({
+      entity_type: 'project',
+      entity_id: String(projectId)
+    });
+    const mappedAttachments = (attachments || []).map((a) => ({
+      id: a.id,
+      name: a.file_name || 'attachment',
+      size: a.file_size ?? undefined,
+      type: '',
+      url: a.file_url || undefined
+    }));
+
+    return { data: { ...project, attachments: mappedAttachments } };
+  }, req, res);
+}
+
+function updateProjectById(req, res) {
+  return handle(async () => {
+    const projectId = req.params && req.params.projectId ? String(req.params.projectId) : null;
+    if (!projectId) {
+      const error = new Error('projectId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireProjectAdmin(req, projectId);
+
+    const existing = await projectRepository.findById(projectId);
+    if (!existing) {
+      const error = new Error('Project not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const { name, description, about, startDate, endDate, status } = req.body || {};
+
+    const richDescription =
+      typeof description === 'string'
+        ? description
+        : (typeof about === 'string' ? about : undefined);
+
+    const payload = {
+      ...(name !== undefined ? { name } : {}),
+      ...(richDescription !== undefined ? { description: richDescription } : {}),
+      ...(status !== undefined ? { status } : {}),
+      ...(startDate !== undefined ? { start_date: startDate } : {}),
+      ...(endDate !== undefined ? { end_date: endDate } : {})
+    };
+
+    const updated = await projectRepository.updateById(projectId, payload);
+    if (!updated) {
+      const error = new Error('Project not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const attachments = await attachmentRepository.findMany({
+      entity_type: 'project',
+      entity_id: String(projectId)
+    });
+    const mappedAttachments = (attachments || []).map((a) => ({
+      id: a.id,
+      name: a.file_name || 'attachment',
+      size: a.file_size ?? undefined,
+      type: '',
+      url: a.file_url || undefined
+    }));
+
+    return { data: { ...updated, attachments: mappedAttachments } };
   }, req, res);
 }
 
@@ -233,6 +318,7 @@ function listProjectsCreatedByUser(req, res) {
 module.exports = {
   createProject,
   getProjectById,
+  updateProjectById,
   listAdminProjects,
   listProjectsCreatedByUser
 };

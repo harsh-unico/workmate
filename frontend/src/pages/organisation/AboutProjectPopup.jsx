@@ -1,5 +1,5 @@
 import React from "react";
-import { Popup } from "../../components";
+import { AttachmentList, Popup } from "../../components";
 import { useTheme } from "../../context/theme";
 
 const AboutProjectPopup = ({
@@ -7,6 +7,7 @@ const AboutProjectPopup = ({
   onClose,
   projectName = "Project",
   descriptionHtml = "",
+  attachments = [],
   error = "",
 }) => {
   const t = useTheme();
@@ -58,6 +59,23 @@ const AboutProjectPopup = ({
             No description provided.
           </p>
         )}
+
+        {Array.isArray(attachments) && attachments.length > 0 ? (
+          <div style={{ marginTop: t.spacing(2) }}>
+            <h3
+              style={{
+                margin: 0,
+                marginBottom: t.spacing(2),
+                fontSize: t.font.size.md,
+                fontWeight: t.font.weight.semiBold,
+                color: t.colors.textHeadingDark,
+              }}
+            >
+              Attachments
+            </h3>
+            <AttachmentList attachments={attachments} />
+          </div>
+        ) : null}
       </div>
     </Popup>
   );

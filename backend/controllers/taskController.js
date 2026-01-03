@@ -288,6 +288,13 @@ function updateTaskById(req, res) {
       throw error;
     }
 
+    const existing = await taskRepository.findById(id);
+    if (!existing) {
+      const error = new Error('Task not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
     const {
       title,
       description,
@@ -296,9 +303,42 @@ function updateTaskById(req, res) {
       dueDate,
       projectId,
       assigneeId,
+      assigneeEmail,
       assignerId,
       completedAt
     } = req.body || {};
+
+    // Resolve assignee by email (parity with createTask)
+    let resolvedAssigneeId = assigneeId !== undefined ? assigneeId : undefined;
+    if (resolvedAssigneeId === undefined && assigneeEmail !== undefined) {
+      const email = String(assigneeEmail || '').trim().toLowerCase();
+      if (!email) {
+        resolvedAssigneeId = null;
+      } else {
+        const user = await userRepository.findByEmail(email);
+        if (!user) {
+          const error = new Error('Assignee not found');
+          error.statusCode = 400;
+          throw error;
+        }
+        resolvedAssigneeId = String(user.id);
+      }
+    }
+
+    const effectiveProjectId = projectId !== undefined ? projectId : existing.project_id;
+
+    // If we have a project and an assignee, ensure they belong to the project.
+    if (effectiveProjectId && resolvedAssigneeId) {
+      const membership = await projectMemberRepository.findOne({
+        project_id: String(effectiveProjectId),
+        user_id: String(resolvedAssigneeId)
+      });
+      if (!membership) {
+        const error = new Error('Assignee is not a member of this project');
+        error.statusCode = 400;
+        throw error;
+      }
+    }
 
     const payload = {
       ...(title !== undefined ? { title } : {}),
@@ -307,7 +347,7 @@ function updateTaskById(req, res) {
       ...(priority !== undefined ? { priority: normalizeTaskPriority(priority) } : {}),
       ...(dueDate !== undefined ? { due_date: dueDate } : {}),
       ...(projectId !== undefined ? { project_id: projectId } : {}),
-      ...(assigneeId !== undefined ? { assignee_id: assigneeId } : {}),
+      ...(resolvedAssigneeId !== undefined ? { assignee_id: resolvedAssigneeId } : {}),
       ...(assignerId !== undefined ? { assigner_id: assignerId } : {}),
       ...(completedAt !== undefined ? { completed_at: completedAt } : {})
     };

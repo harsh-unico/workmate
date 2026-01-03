@@ -357,6 +357,7 @@ const ProjectOverview = () => {
           onClose={() => setIsAboutPopupOpen(false)}
           projectName={projectName || "Project"}
           descriptionHtml={descriptionHtml || ""}
+          attachments={Array.isArray(project?.attachments) ? project.attachments : []}
           error={projectError}
         />
       </div>

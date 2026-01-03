@@ -26,4 +26,11 @@ export const listAttachments = async ({ entityType, entityId } = {}) => {
   return apiClient.get(`${API_ENDPOINTS.ATTACHMENT.LIST}?${params.toString()}`)
 }
 
+export const deleteAttachmentById = async (attachmentId) => {
+  if (!attachmentId) throw new Error('attachmentId is required')
+  return apiClient.delete(
+    `${API_ENDPOINTS.ATTACHMENT.LIST}/${encodeURIComponent(String(attachmentId))}`
+  )
+}
+
 
