@@ -13,7 +13,12 @@ import { useTheme } from "../../context/theme";
 import { ROUTES } from "../../utils/constants";
 import addIcon from "../../assets/icons/addIcon.png";
 import sampleProfile from "../../assets/images/sampleProfile.png";
-import { getOrganisations } from "../../services/orgService";
+import {
+  getOrganisations,
+  getOrgProjectsCount,
+  getOrgMembersCount,
+  getOrgTasksCount,
+} from "../../services/orgService";
 
 const Organisations = () => {
   const t = useTheme();
@@ -37,16 +42,41 @@ const Organisations = () => {
         const response = await getOrganisations();
         // Backend returns { data: [...] }
         const list = Array.isArray(response?.data) ? response.data : [];
-        // Normalise into shape expected by OrganisationCard
-        const mapped = list.map((org) => ({
-          id: org.id,
-          name: org.org_name,
-          hasLogo: false,
-          folders: 0,
-          members: 0,
-          projects: 0,
-        }));
-        setOrganisations(mapped);
+        
+        // Fetch counts for each organisation in parallel
+        const organisationsWithCounts = await Promise.all(
+          list.map(async (org) => {
+            try {
+              const [projectsRes, membersRes, tasksRes] = await Promise.all([
+                getOrgProjectsCount(org.id).catch(() => ({ data: { count: 0 } })),
+                getOrgMembersCount(org.id).catch(() => ({ data: { count: 0 } })),
+                getOrgTasksCount(org.id).catch(() => ({ data: { count: 0 } })),
+              ]);
+
+              return {
+                id: org.id,
+                name: org.org_name,
+                hasLogo: false,
+                members: Number(membersRes?.data?.count ?? 0),
+                projects: Number(projectsRes?.data?.count ?? 0),
+                tasks: Number(tasksRes?.data?.count ?? 0),
+              };
+            } catch (err) {
+              // If fetching counts fails for one org, continue with 0s
+              console.error(`Failed to load counts for org ${org.id}:`, err);
+              return {
+                id: org.id,
+                name: org.org_name,
+                hasLogo: false,
+                members: 0,
+                projects: 0,
+                tasks: 0,
+              };
+            }
+          })
+        );
+
+        setOrganisations(organisationsWithCounts);
       } catch (err) {
         console.error("Failed to load organisations:", err);
         setError(err.message || "Failed to load organisations.");

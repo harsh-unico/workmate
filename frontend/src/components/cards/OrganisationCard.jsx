@@ -99,22 +99,9 @@ const OrganisationCard = ({ organisation }) => {
             display: 'flex',
             gap: t.spacing(4),
             alignItems: 'center',
+            flexWrap: 'wrap',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: t.spacing(1.5) }}>
-            <img
-              src={folderIcon}
-              alt="Folders"
-              style={{
-                width: '20px',
-                height: '20px',
-                objectFit: 'contain',
-              }}
-            />
-            <span style={{ fontSize: t.font.size.md, color: t.colors.textSecondary, fontFamily: t.font.family }}>
-              {organisation.folders || 10}
-            </span>
-          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: t.spacing(1.5) }}>
             <img
               src={peopleIcon}
@@ -126,7 +113,7 @@ const OrganisationCard = ({ organisation }) => {
               }}
             />
             <span style={{ fontSize: t.font.size.md, color: t.colors.textSecondary, fontFamily: t.font.family }}>
-              {organisation.members || 10}
+              {organisation.members ?? 0}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: t.spacing(1.5) }}>
@@ -140,7 +127,21 @@ const OrganisationCard = ({ organisation }) => {
               }}
             />
             <span style={{ fontSize: t.font.size.md, color: t.colors.textSecondary, fontFamily: t.font.family }}>
-              {organisation.projects || 10}
+              {organisation.projects ?? 0}
+            </span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: t.spacing(1.5) }}>
+            <img
+              src={folderIcon}
+              alt="Tasks"
+              style={{
+                width: '20px',
+                height: '20px',
+                objectFit: 'contain',
+              }}
+            />
+            <span style={{ fontSize: t.font.size.md, color: t.colors.textSecondary, fontFamily: t.font.family }}>
+              {organisation.tasks ?? 0}
             </span>
           </div>
         </div>

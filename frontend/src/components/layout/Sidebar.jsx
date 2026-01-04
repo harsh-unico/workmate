@@ -137,6 +137,28 @@ const Sidebar = () => {
     return location.pathname.startsWith(path)
   }
 
+  // Determine back navigation based on current route
+  const getBackPath = () => {
+    if (isProjectDetail) {
+      // On project page: go to organisation overview
+      const orgId = segments[1]
+      return `/organisations/${orgId}/overview`
+    } else if (isOrganisationDetail) {
+      // On organisation page: go to organisations list
+      return ROUTES.ORGANISATIONS
+    }
+    return null
+  }
+
+  const backPath = getBackPath()
+  const showBackButton = backPath !== null
+
+  const handleBack = () => {
+    if (backPath) {
+      navigate(backPath)
+    }
+  }
+
   return (
     <div
       style={{
@@ -149,6 +171,38 @@ const Sidebar = () => {
         boxSizing: 'border-box',
       }}
     >
+      {/* Back Button */}
+      {showBackButton && (
+        <button
+          onClick={handleBack}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            border: 'none',
+            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+            color: t.colors.textPrimary,
+            cursor: 'pointer',
+            marginBottom: t.spacing(3),
+            transition: 'background-color 0.2s',
+            fontSize: '20px',
+            padding: 0,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'
+          }}
+          title={isProjectDetail ? 'Back to Organisation' : 'Back to Organisations'}
+        >
+          <span style={{ lineHeight: 1 }}>←</span>
+        </button>
+      )}
+
       {/* Logo */}
       <div
         style={{

@@ -335,39 +335,29 @@ const OrganisationForm = ({ formData, onFieldChange }) => {
         <OrganisationFormField
           label="Country"
           name="country"
-          as="select"
           baseInputStyle={baseInputStyle}
           labelStyle={labelStyle}
           fieldWrapperStyle={fieldWrapperStyle}
           inputProps={{
+            type: "text",
             value: formData.country,
             onChange: handleChange("country"),
+            placeholder: "Enter the country",
           }}
-          inputStyle={{ appearance: "none" }}
-        >
-          <option value=""></option>
-          <option value="India">India</option>
-          <option value="USA">United States</option>
-          <option value="UK">United Kingdom</option>
-        </OrganisationFormField>
+        />
         <OrganisationFormField
           label="State"
           name="state"
-          as="select"
           baseInputStyle={baseInputStyle}
           labelStyle={labelStyle}
           fieldWrapperStyle={fieldWrapperStyle}
           inputProps={{
+            type: "text",
             value: formData.state,
             onChange: handleChange("state"),
+            placeholder: "Enter the state",
           }}
-          inputStyle={{ appearance: "none" }}
-        >
-          <option value=""></option>
-          <option value="Delhi">Delhi</option>
-          <option value="Karnataka">Karnataka</option>
-          <option value="Maharashtra">Maharashtra</option>
-        </OrganisationFormField>
+        />
       </div>
 
       <div
@@ -382,21 +372,16 @@ const OrganisationForm = ({ formData, onFieldChange }) => {
         <OrganisationFormField
           label="City"
           name="city"
-          as="select"
           baseInputStyle={baseInputStyle}
           labelStyle={labelStyle}
           fieldWrapperStyle={fieldWrapperStyle}
           inputProps={{
+            type: "text",
             value: formData.city,
             onChange: handleChange("city"),
+            placeholder: "Enter the city",
           }}
-          inputStyle={{ appearance: "none" }}
-        >
-          <option value=""></option>
-          <option value="Bangalore">Bangalore</option>
-          <option value="Mumbai">Mumbai</option>
-          <option value="London">London</option>
-        </OrganisationFormField>
+        />
         <OrganisationFormField
           label="Pincode"
           name="pincode"
