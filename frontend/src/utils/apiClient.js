@@ -1,4 +1,5 @@
 import { API_CONFIG, ROUTES, STORAGE_KEYS } from './constants'
+import { apiCache } from './apiCache'
 
 /**
  * API Client for making HTTP requests
@@ -67,79 +68,186 @@ class ApiClient {
   }
 
   /**
-   * Make GET request
+   * Make GET request with caching
    */
   async get(endpoint, options = {}) {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'GET',
-      headers: this.getHeaders(options.headers),
-      credentials: 'include',
-      ...options,
-    })
+    // Check cache first (only for GET requests)
+    const useCache = options.useCache !== false // Default to true
+    const cacheParams = options.cacheParams || {}
+    const cacheTTL = options.cacheTTL || null // Use default TTL if not specified
 
-    return this.handleResponse(response)
+    if (useCache) {
+      const cached = apiCache.get(endpoint, cacheParams)
+      if (cached !== null) {
+        return cached
+      }
+    }
+
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'GET',
+        headers: this.getHeaders(options.headers),
+        credentials: 'include',
+        signal: controller.signal,
+        ...options,
+      })
+      clearTimeout(timeoutId)
+      const data = await this.handleResponse(response)
+      
+      // Cache successful responses
+      if (useCache && response.ok) {
+        apiCache.set(endpoint, cacheParams, data, cacheTTL)
+      }
+      
+      return data
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${this.timeout}ms`)
+      }
+      throw error
+    }
   }
 
   /**
-   * Make POST request
+   * Make POST request (invalidates related cache)
    */
   async post(endpoint, data, options = {}) {
+    // Invalidate related cache patterns
+    if (options.invalidateCache) {
+      const patterns = Array.isArray(options.invalidateCache) 
+        ? options.invalidateCache 
+        : [options.invalidateCache]
+      patterns.forEach(pattern => apiCache.invalidate(pattern))
+    }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'POST',
-      headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
-      body: isFormData ? data : JSON.stringify(data),
-      credentials: 'include',
-      ...options,
-    })
 
-    return this.handleResponse(response)
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'POST',
+        headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
+        body: isFormData ? data : JSON.stringify(data),
+        credentials: 'include',
+        signal: controller.signal,
+        ...options,
+      })
+      clearTimeout(timeoutId)
+      return this.handleResponse(response)
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${this.timeout}ms`)
+      }
+      throw error
+    }
   }
 
   /**
-   * Make PUT request
+   * Make PUT request (invalidates related cache)
    */
   async put(endpoint, data, options = {}) {
+    // Invalidate related cache patterns
+    if (options.invalidateCache) {
+      const patterns = Array.isArray(options.invalidateCache) 
+        ? options.invalidateCache 
+        : [options.invalidateCache]
+      patterns.forEach(pattern => apiCache.invalidate(pattern))
+    }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'PUT',
-      headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
-      body: isFormData ? data : JSON.stringify(data),
-      credentials: 'include',
-      ...options,
-    })
 
-    return this.handleResponse(response)
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'PUT',
+        headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
+        body: isFormData ? data : JSON.stringify(data),
+        credentials: 'include',
+        signal: controller.signal,
+        ...options,
+      })
+      clearTimeout(timeoutId)
+      return this.handleResponse(response)
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${this.timeout}ms`)
+      }
+      throw error
+    }
   }
 
   /**
-   * Make PATCH request
+   * Make PATCH request (invalidates related cache)
    */
   async patch(endpoint, data, options = {}) {
+    // Invalidate related cache patterns
+    if (options.invalidateCache) {
+      const patterns = Array.isArray(options.invalidateCache) 
+        ? options.invalidateCache 
+        : [options.invalidateCache]
+      patterns.forEach(pattern => apiCache.invalidate(pattern))
+    }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
     const isFormData = typeof FormData !== 'undefined' && data instanceof FormData
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'PATCH',
-      headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
-      body: isFormData ? data : JSON.stringify(data),
-      credentials: 'include',
-      ...options,
-    })
 
-    return this.handleResponse(response)
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'PATCH',
+        headers: isFormData ? { ...(options.headers || {}) } : this.getHeaders(options.headers),
+        body: isFormData ? data : JSON.stringify(data),
+        credentials: 'include',
+        signal: controller.signal,
+        ...options,
+      })
+      clearTimeout(timeoutId)
+      return this.handleResponse(response)
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${this.timeout}ms`)
+      }
+      throw error
+    }
   }
 
   /**
-   * Make DELETE request
+   * Make DELETE request (invalidates related cache)
    */
   async delete(endpoint, options = {}) {
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      method: 'DELETE',
-      headers: this.getHeaders(options.headers),
-      credentials: 'include',
-      ...options,
-    })
+    // Invalidate related cache patterns
+    if (options.invalidateCache) {
+      const patterns = Array.isArray(options.invalidateCache) 
+        ? options.invalidateCache 
+        : [options.invalidateCache]
+      patterns.forEach(pattern => apiCache.invalidate(pattern))
+    }
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout)
 
-    return this.handleResponse(response)
+    try {
+      const response = await fetch(`${this.baseURL}${endpoint}`, {
+        method: 'DELETE',
+        headers: this.getHeaders(options.headers),
+        credentials: 'include',
+        signal: controller.signal,
+        ...options,
+      })
+      clearTimeout(timeoutId)
+      return this.handleResponse(response)
+    } catch (error) {
+      clearTimeout(timeoutId)
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${this.timeout}ms`)
+      }
+      throw error
+    }
   }
 }
 

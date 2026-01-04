@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
-import { AttachmentList, DashboardSectionCard } from "../../components";
+import { AttachmentList, DashboardSectionCard, Loader } from "../../components";
 import { useTheme } from "../../context/theme";
 import editIconBlack from "../../assets/icons/editIconBlack.png";
 import attachmentIcon from "../../assets/icons/attachment.png";
@@ -1169,13 +1169,15 @@ const TaskDetails = () => {
             {isLoading && !currentTask.title ? (
               <div
                 style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
                   margin: 0,
                   marginBottom: t.spacing(4),
-                  color: t.colors.textMutedDark,
-                  fontSize: t.font.size.sm,
+                  minHeight: "100px",
                 }}
               >
-                Loading task details...
+                <Loader size={32} />
               </div>
             ) : hasDescription ? (
               <div
@@ -1410,9 +1412,16 @@ const TaskDetails = () => {
                 }}
               >
           {isCommentsLoading ? (
-            <div style={{ color: t.colors.textMutedDark, fontSize: t.font.size.sm }}>
-              Loading comments...
-                      </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                minHeight: "100px",
+              }}
+            >
+              <Loader size={32} />
+            </div>
           ) : commentThreads.length === 0 ? (
             <div style={{ color: t.colors.textMutedDark, fontSize: t.font.size.sm }}>
               No comments yet.

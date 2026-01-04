@@ -6,6 +6,7 @@ import {
   PriorityFilterDropdown,
   AssigneeFilterDropdown,
   SortFilterDropdown,
+  Loader,
 } from "../../components";
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
@@ -372,7 +373,17 @@ const ProjectTasks = () => {
         }}
       >
         {isLoading ? (
-          <div>Loading tasks...</div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+              gridColumn: "1 / -1",
+            }}
+          >
+            <Loader size={48} />
+          </div>
         ) : (
           filteredColumns.map((column) => (
           <div

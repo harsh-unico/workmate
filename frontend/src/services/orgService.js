@@ -13,7 +13,9 @@ export const getOrganisations = async () => {
  * @param {object} payload - Organisation data from the form
  */
 export const createOrganisation = async (payload) => {
-  return apiClient.post(API_ENDPOINTS.ORG.CREATE, payload)
+  return apiClient.post(API_ENDPOINTS.ORG.CREATE, payload, {
+    invalidateCache: [API_ENDPOINTS.ORG.LIST_ADMIN]
+  })
 }
 
 /**
@@ -73,18 +75,40 @@ export const inviteOrganisationMembers = async (orgId, emails) => {
   if (!orgId) throw new Error('orgId is required')
   return apiClient.post(
     `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}/members/invite`,
-    { emails }
+    { emails },
+    {
+      invalidateCache: [
+        `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}*`
+      ]
+    }
   )
 }
 
 export const updateOrganisation = async (orgId, payload) => {
   if (!orgId) throw new Error('orgId is required')
-  return apiClient.patch(`${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}`, payload)
+  return apiClient.patch(
+    `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}`,
+    payload,
+    {
+      invalidateCache: [
+        `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}*`,
+        API_ENDPOINTS.ORG.LIST_ADMIN
+      ]
+    }
+  )
 }
 
 export const deleteOrganisationById = async (orgId) => {
   if (!orgId) throw new Error('orgId is required')
-  return apiClient.delete(`${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}`)
+  return apiClient.delete(
+    `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}`,
+    {
+      invalidateCache: [
+        `${API_ENDPOINTS.ORG.LIST}*`,
+        API_ENDPOINTS.ORG.LIST_ADMIN
+      ]
+    }
+  )
 }
 
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
-import { StatsCard, DashboardSectionCard } from "../../components";
+import { StatsCard, DashboardSectionCard, Loader } from "../../components";
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import AboutProjectPopup from "./AboutProjectPopup";
@@ -22,6 +22,7 @@ const ProjectOverview = () => {
   const [project, setProject] = useState(null);
   const [projectError, setProjectError] = useState("");
   const [isAboutPopupOpen, setIsAboutPopupOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [statsData, setStatsData] = useState({
     progressPercent: null,
     total: null,
@@ -34,31 +35,34 @@ const ProjectOverview = () => {
     if (!id || !projectId) return;
     let cancelled = false;
     setProjectError("");
+    setIsLoading(true);
     (async () => {
       try {
-        const orgRes = await getOrganisationById(id);
+        // Load project first to get name quickly, then load other data in parallel
+        const [orgRes, projRes] = await Promise.all([
+          getOrganisationById(id),
+          getProjectById(projectId).catch((e) => {
+            // If the project was deleted, navigate back to projects list to avoid repeated 404 spam.
+            if (String(e?.message || "").toLowerCase().includes("project not found")) {
+              navigate(`/organisations/${id}/projects`, { replace: true });
+              return null;
+            }
+            throw e;
+          }),
+        ]);
         if (cancelled) return;
+        if (!projRes) return; // Already navigated away
+
         setOrgName(orgRes?.data?.org_name || "Organisation");
+        setProject(projRes?.data || null);
 
-        let projRes;
-        try {
-          projRes = await getProjectById(projectId);
-        } catch (e) {
-          // If the project was deleted, navigate back to projects list to avoid repeated 404 spam.
-          if (String(e?.message || "").toLowerCase().includes("project not found")) {
-            navigate(`/organisations/${id}/projects`, { replace: true });
-            return;
-          }
-          throw e;
-        }
-        if (cancelled) return;
-
+        // Load stats and team in parallel
         const [statsRes, teamRes] = await Promise.all([
           getProjectTaskStats(projectId),
           getProjectTeamStats(projectId),
         ]);
         if (cancelled) return;
-        setProject(projRes?.data || null);
+
         setStatsData({
           progressPercent: Number(statsRes?.data?.progressPercent ?? 0),
           total: Number(statsRes?.data?.total ?? 0),
@@ -104,24 +108,18 @@ const ProjectOverview = () => {
           pending: null,
         });
         setTeamMembers([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [id, projectId]);
+  }, [id, projectId, navigate]);
 
   const projectNameFromState = location.state?.projectName;
-  const derivedProjectName =
-    projectId && typeof projectId === "string"
-      ? projectId
-          .split("-")
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" ")
-      : "Project Alpha";
-
   const projectName =
-    project?.name || projectNameFromState || derivedProjectName;
+    project?.name || projectNameFromState || (isLoading ? "Loading..." : "Project");
 
   const headerTitle = `${orgName || "Organisation"} / ${
     projectName || "Project"
@@ -224,24 +222,37 @@ const ProjectOverview = () => {
           gap: t.spacing(4),
         }}
       >
-        {/* Top Stats Row */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: t.spacing(4),
-          }}
-        >
-          {stats.map((stat) => (
-            <StatsCard
-              key={stat.label}
-              label={stat.label}
-              value={stat.value}
-              delta={stat.delta}
-              progress={stat.progress}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <Loader size={48} />
+          </div>
+        ) : (
+          <>
+            {/* Top Stats Row */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: t.spacing(4),
+              }}
+            >
+              {stats.map((stat) => (
+                <StatsCard
+                  key={stat.label}
+                  label={stat.label}
+                  value={stat.value}
+                  delta={stat.delta}
+                  progress={stat.progress}
+                />
+              ))}
+            </div>
 
         {/* About Project (rich text preview like org overview) */}
         <DashboardSectionCard
@@ -422,6 +433,8 @@ const ProjectOverview = () => {
             </div>
           </DashboardSectionCard>
         </div>
+          </>
+        )}
 
         <AboutProjectPopup
           isOpen={isAboutPopupOpen}

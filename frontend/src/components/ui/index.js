@@ -8,4 +8,5 @@ export { default as PriorityFilterDropdown } from './PriorityFilterDropdown'
 export { default as AssigneeFilterDropdown } from './AssigneeFilterDropdown'
 export { default as SortFilterDropdown } from './SortFilterDropdown'
 export { default as ProfileDropdown } from './ProfileDropdown'
+export { default as Loader } from './Loader'
 

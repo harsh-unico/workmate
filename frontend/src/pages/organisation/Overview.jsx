@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
-import { StatsCard, DashboardSectionCard } from "../../components";
+import { StatsCard, DashboardSectionCard, Loader } from "../../components";
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import AboutOrganisationPopup from "./AboutOrganisationPopup";
@@ -29,6 +29,7 @@ const OrganisationOverview = () => {
   const [org, setOrg] = useState(null);
   const [orgError, setOrgError] = useState("");
   const [topProjects, setTopProjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   const organisationName = org?.org_name || "Organisation";
   const hasAbout =
@@ -43,6 +44,7 @@ const OrganisationOverview = () => {
     let cancelled = false;
     setCountsError("");
     setOrgError("");
+    setIsLoading(true);
 
     (async () => {
       try {
@@ -72,6 +74,8 @@ const OrganisationOverview = () => {
         setCounts({ projects: null, members: null, tasks: null });
         setOrg(null);
         setTopProjects([]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
     })();
 
@@ -372,7 +376,20 @@ const OrganisationOverview = () => {
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
     >
-      {renderOverview()}
+      {isLoading ? (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "400px",
+          }}
+        >
+          <Loader size={48} />
+        </div>
+      ) : (
+        renderOverview()
+      )}
     </OrganisationLayout>
   );
 };

@@ -6,7 +6,12 @@ import { API_ENDPOINTS } from '../utils/constants'
  * Backend accepts: title, description, status, priority, dueDate, projectId, assigneeId/assigneeEmail
  */
 export const createTask = async (payload) => {
-  return apiClient.post(API_ENDPOINTS.TASK.CREATE, payload)
+  return apiClient.post(API_ENDPOINTS.TASK.CREATE, payload, {
+    invalidateCache: [
+      `${API_ENDPOINTS.TASK.LIST}*`,
+      `${API_ENDPOINTS.PROJECT.LIST}*`
+    ]
+  })
 }
 
 export const listTasks = async (filters = {}) => {
@@ -38,13 +43,27 @@ export const updateTaskById = async (taskId, payload = {}) => {
   if (!taskId) throw new Error('taskId is required')
   return apiClient.patch(
     `${API_ENDPOINTS.TASK.LIST}/${encodeURIComponent(String(taskId))}`,
-    payload
+    payload,
+    {
+      invalidateCache: [
+        `${API_ENDPOINTS.TASK.LIST}*`,
+        `${API_ENDPOINTS.PROJECT.LIST}*`
+      ]
+    }
   )
 }
 
 export const deleteTaskById = async (taskId) => {
   if (!taskId) throw new Error('taskId is required')
-  return apiClient.delete(`${API_ENDPOINTS.TASK.LIST}/${encodeURIComponent(String(taskId))}`)
+  return apiClient.delete(
+    `${API_ENDPOINTS.TASK.LIST}/${encodeURIComponent(String(taskId))}`,
+    {
+      invalidateCache: [
+        `${API_ENDPOINTS.TASK.LIST}*`,
+        `${API_ENDPOINTS.PROJECT.LIST}*`
+      ]
+    }
+  )
 }
 
 

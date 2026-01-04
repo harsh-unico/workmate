@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
-import { TeamMemberCard } from "../../components";
+import { TeamMemberCard, Loader } from "../../components";
 import { useTheme } from "../../context/theme";
 import RemoveMemberPopup from "./RemoveMemberPopup";
 import InviteMemberPopup from "./InviteMemberPopup";
@@ -162,7 +162,17 @@ const OrganisationTeamMembers = () => {
         }}
       >
         {isLoading ? (
-          <div>Loading members...</div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+              gridColumn: "1 / -1",
+            }}
+          >
+            <Loader size={48} />
+          </div>
         ) : (
           filteredMembers.map((member) => renderMemberCard(member))
         )}

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
-import { ProjectCard } from "../../components";
+import { ProjectCard, Loader } from "../../components";
 import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import {
@@ -125,7 +125,17 @@ const OrganisationProjects = () => {
             }}
           >
             {isLoading ? (
-              <div>Loading projects...</div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  minHeight: "400px",
+                  gridColumn: "1 / -1",
+                }}
+              >
+                <Loader size={48} />
+              </div>
             ) : filteredProjects.length === 0 ? (
               <div>No projects found.</div>
             ) : (

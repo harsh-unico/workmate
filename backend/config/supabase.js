@@ -16,7 +16,16 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY || '', {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
-    detectSessionInUrl: false
+    detectSessionInUrl: false,
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'x-client-info': 'workmate-backend'
+    }
+  },
+  db: {
+    schema: 'public'
   }
 });
 
@@ -26,7 +35,16 @@ const supabaseAdmin = SUPABASE_SERVICE_ROLE_KEY
       auth: {
         autoRefreshToken: false,
         persistSession: false,
-        detectSessionInUrl: false
+        detectSessionInUrl: false,
+        flowType: 'pkce'
+      },
+      global: {
+        headers: {
+          'x-client-info': 'workmate-backend-admin'
+        }
+      },
+      db: {
+        schema: 'public'
       }
     })
   : null;

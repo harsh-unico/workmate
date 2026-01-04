@@ -73,6 +73,13 @@ function resetPassword(req, res) {
 
 function logout(req, res) {
   return handle(() => {
+    // Invalidate auth cache
+    const { invalidateAuthCache } = require('../middleware/auth');
+    const token = req.cookies?.auth_token || req.headers?.authorization?.split(' ')[1];
+    if (token) {
+      invalidateAuthCache(token);
+    }
+
     res.cookie('auth_token', '', {
       httpOnly: true,
       secure: NODE_ENV === 'production',

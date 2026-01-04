@@ -42,7 +42,7 @@ const Login = () => {
       if (profile && profile.is_admin === false) {
         navigate(ROUTES.EMPLOYEE_DASHBOARD)
       } else {
-        navigate(ROUTES.DASHBOARD)
+      navigate(ROUTES.DASHBOARD)
       }
     } catch (error) {
       throw error

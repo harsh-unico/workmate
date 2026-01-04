@@ -3,6 +3,28 @@
 const { supabase } = require('../config/supabase');
 const userRepository = require('../repositories/userRepository');
 
+// In-memory caches with TTL
+const USER_PROFILE_CACHE = new Map(); // key: email, value: { profile, expiresAt }
+const AUTH_USER_CACHE = new Map(); // key: token, value: { user, expiresAt }
+
+const USER_PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const AUTH_USER_CACHE_TTL = 1 * 60 * 1000; // 1 minute
+
+// Clean up expired cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of USER_PROFILE_CACHE.entries()) {
+    if (value.expiresAt < now) {
+      USER_PROFILE_CACHE.delete(key);
+    }
+  }
+  for (const [key, value] of AUTH_USER_CACHE.entries()) {
+    if (value.expiresAt < now) {
+      AUTH_USER_CACHE.delete(key);
+    }
+  }
+}, 60 * 1000); // Clean every minute
+
 function extractToken(req) {
   const authHeader = req.headers.authorization || req.headers.Authorization;
 
@@ -28,25 +50,56 @@ async function requireAuth(req, res, next) {
   }
 
   try {
-    const { data, error } = await supabase.auth.getUser(token);
+    // Check cache for Supabase auth user
+    let authUser = null;
+    const cachedAuth = AUTH_USER_CACHE.get(token);
+    if (cachedAuth && cachedAuth.expiresAt > Date.now()) {
+      authUser = cachedAuth.user;
+    } else {
+      // Fetch from Supabase
+      const { data, error } = await supabase.auth.getUser(token);
 
-    if (error || !data || !data.user) {
-      return res.status(401).json({ error: 'Invalid or expired token' });
+      if (error || !data || !data.user) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+
+      authUser = data.user;
+      // Cache the auth user
+      AUTH_USER_CACHE.set(token, {
+        user: authUser,
+        expiresAt: Date.now() + AUTH_USER_CACHE_TTL
+      });
     }
 
-    const email = data.user.email || null;
+    const email = authUser.email || null;
 
     // Attach Supabase auth user info to the request. Important:
     // our DB tables (org_members/project_members/etc) reference the app's `users` table,
     // whose primary key is NOT the Supabase auth user id.
     req.user = {
-      authId: data.user.id,
+      authId: authUser.id,
       email,
     };
 
     // Resolve app user profile by email and use its id for DB foreign keys.
     if (email) {
-      const profile = await userRepository.findByEmail(email);
+      // Check cache for user profile
+      let profile = null;
+      const cachedProfile = USER_PROFILE_CACHE.get(email);
+      if (cachedProfile && cachedProfile.expiresAt > Date.now()) {
+        profile = cachedProfile.profile;
+      } else {
+        // Fetch from database
+        profile = await userRepository.findByEmail(email);
+        if (profile) {
+          // Cache the profile
+          USER_PROFILE_CACHE.set(email, {
+            profile,
+            expiresAt: Date.now() + USER_PROFILE_CACHE_TTL
+          });
+        }
+      }
+
       if (!profile) {
         return res.status(404).json({ error: 'User profile not found' });
       }
@@ -68,7 +121,24 @@ async function requireAdmin(req, res, next) {
   }
 
   try {
-    const profile = req.user.profile || (await userRepository.findByEmail(req.user.email));
+    // Use cached profile if available (from requireAuth)
+    let profile = req.user.profile;
+    if (!profile) {
+      // Check cache first
+      const cachedProfile = USER_PROFILE_CACHE.get(req.user.email);
+      if (cachedProfile && cachedProfile.expiresAt > Date.now()) {
+        profile = cachedProfile.profile;
+      } else {
+        profile = await userRepository.findByEmail(req.user.email);
+        if (profile) {
+          USER_PROFILE_CACHE.set(req.user.email, {
+            profile,
+            expiresAt: Date.now() + USER_PROFILE_CACHE_TTL
+          });
+        }
+      }
+    }
+
     if (!profile || !profile.is_admin) {
       return res.status(403).json({ error: 'Forbidden' });
     }
@@ -84,9 +154,25 @@ async function requireAdmin(req, res, next) {
   }
 }
 
+// Helper function to invalidate user profile cache (call this when user data is updated)
+function invalidateUserCache(email) {
+  if (email) {
+    USER_PROFILE_CACHE.delete(String(email).toLowerCase());
+  }
+}
+
+// Helper function to invalidate auth cache (call this on logout or token invalidation)
+function invalidateAuthCache(token) {
+  if (token) {
+    AUTH_USER_CACHE.delete(String(token));
+  }
+}
+
 module.exports = {
   requireAuth,
   requireAdmin,
+  invalidateUserCache,
+  invalidateAuthCache
 };
 
 

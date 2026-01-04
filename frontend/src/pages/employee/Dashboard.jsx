@@ -5,6 +5,7 @@ import {
   PriorityFilterDropdown,
   SortFilterDropdown,
   TaskCard,
+  Loader,
 } from "../../components";
 import { useTheme } from "../../context/theme";
 import { useAuth } from "../../hooks/useAuth";
@@ -432,7 +433,17 @@ const EmployeeDashboard = () => {
         }}
       >
         {isLoading ? (
-          <div>Loading tasks...</div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+              gridColumn: "1 / -1",
+            }}
+          >
+            <Loader size={48} />
+          </div>
         ) : (
           filteredColumns.map((column) => (
             <div

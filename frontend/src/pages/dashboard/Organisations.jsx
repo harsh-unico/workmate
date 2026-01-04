@@ -6,6 +6,7 @@ import {
   SearchBar,
   PrimaryButton,
   ProfileDropdown,
+  Loader,
 } from "../../components";
 import { useAuth } from "../../hooks";
 import { useTheme } from "../../context/theme";
@@ -172,7 +173,16 @@ const Organisations = () => {
           </div>
         )}
         {isLoading ? (
-          <div>Loading organisations...</div>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <Loader size={48} />
+          </div>
         ) : (
           <div
             style={{
