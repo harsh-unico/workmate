@@ -28,6 +28,12 @@ router.post(
   authController.forgotPassword
 );
 router.post(
+  '/forgot-password/verify-otp',
+  verifyOtpValidator,
+  handleValidation,
+  authController.verifyForgotPasswordOtp
+);
+router.post(
   '/reset-password',
   resetPasswordValidator,
   handleValidation,

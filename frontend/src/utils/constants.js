@@ -61,6 +61,7 @@ export const API_ENDPOINTS = {
 export const STORAGE_KEYS = {
   USER: 'user',
   SIGNUP_EMAIL: 'signup_email',
+  FORGOT_PASSWORD_EMAIL: 'forgot_password_email',
 }
 
 /**

@@ -80,15 +80,34 @@ export const verifyOtp = async (data) => {
 }
 
 /**
- * Request password reset
+ * Request password reset (sends OTP)
  * @param {string} email - User email
  * @returns {Promise<void>}
  */
 export const forgotPassword = async (email) => {
   try {
-    await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email })
+    // Store email for OTP verification
+    if (email) {
+      localStorage.setItem(STORAGE_KEYS.FORGOT_PASSWORD_EMAIL, email)
+    }
+    return response
   } catch (error) {
-    throw new Error(error.message || 'Failed to send password reset email')
+    throw new Error(error.message || 'Failed to send password reset OTP')
+  }
+}
+
+/**
+ * Verify forgot password OTP
+ * @param {object} data - { email, otp }
+ * @returns {Promise<object>} Contains token for password reset
+ */
+export const verifyForgotPasswordOtp = async (data) => {
+  try {
+    const response = await apiClient.post(`${API_ENDPOINTS.AUTH.BASE}/forgot-password/verify-otp`, data)
+    return response
+  } catch (error) {
+    throw new Error(error.message || 'Failed to verify OTP')
   }
 }
 

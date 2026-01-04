@@ -8,7 +8,7 @@ import {
 } from '../../components'
 import { useTheme } from '../../context/theme'
 import { ROUTES, STORAGE_KEYS } from '../../utils/constants'
-import { sendChangePasswordOtp, verifyChangePasswordOtp, verifyOtp } from '../../services/authService'
+import { sendChangePasswordOtp, verifyChangePasswordOtp, verifyOtp, verifyForgotPasswordOtp, forgotPassword } from '../../services/authService'
 import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/icons/logo.png'
 import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
@@ -54,6 +54,19 @@ const OtpVerification = () => {
         const token = res?.token || res?.data?.token
         if (!token) throw new Error('Missing reset token')
         navigate(`${ROUTES.RESET_PASSWORD}?flow=change_password&token=${encodeURIComponent(String(token))}`)
+      } else if (flow === 'forgot_password') {
+        const email = localStorage.getItem(STORAGE_KEYS.FORGOT_PASSWORD_EMAIL)
+        if (!email) {
+          setError('Password reset session expired. Please request a new OTP.')
+          setIsSubmitting(false)
+          return
+        }
+
+        const res = await verifyForgotPasswordOtp({ email, otp: code })
+        const token = res?.token || res?.data?.token
+        if (!token) throw new Error('Missing reset token')
+        // Keep email in localStorage for ResetPassword page
+        navigate(`${ROUTES.RESET_PASSWORD}?flow=forgot_password&token=${encodeURIComponent(String(token))}`)
       } else {
         const email = localStorage.getItem(STORAGE_KEYS.SIGNUP_EMAIL)
         if (!email) {

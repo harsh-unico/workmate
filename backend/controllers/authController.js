@@ -61,6 +61,11 @@ function forgotPassword(req, res) {
   return handle(() => authService.forgotPassword({ email }), req, res);
 }
 
+function verifyForgotPasswordOtp(req, res) {
+  const { email, otp } = req.body;
+  return handle(() => authService.verifyForgotPasswordOtp({ email, otp }), req, res);
+}
+
 function resetPassword(req, res) {
   const { email, newPassword, token } = req.body;
   return handle(() => authService.resetPassword({ email, newPassword, token }), req, res);
@@ -167,6 +172,7 @@ module.exports = {
   verifyOtp,
   login,
   forgotPassword,
+  verifyForgotPasswordOtp,
   resetPassword,
   logout,
   me,

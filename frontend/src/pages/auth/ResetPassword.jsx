@@ -13,7 +13,7 @@ import {
 import { useTheme } from '../../context/theme'
 import { useForm } from '../../hooks/useForm'
 import { validatePassword } from '../../validators'
-import { ROUTES } from '../../utils/constants'
+import { ROUTES, STORAGE_KEYS } from '../../utils/constants'
 import { resetChangePassword, resetPassword } from '../../services/authService'
 import { useAuth } from '../../hooks/useAuth'
 import { useNavigate } from 'react-router-dom'
@@ -30,10 +30,11 @@ const ResetPassword = () => {
   const searchParams = new URLSearchParams(window.location.search)
   const flow = searchParams.get('flow') || ''
   const isChangePasswordFlow = flow === 'change_password'
+  const isForgotPasswordFlow = flow === 'forgot_password'
 
   const validators = {
     email: (value) => {
-      if (isChangePasswordFlow) {
+      if (isChangePasswordFlow || isForgotPasswordFlow) {
         return { isValid: true, error: '' }
       }
       if (!value || value.trim() === '') {
@@ -95,6 +96,25 @@ const ResetPassword = () => {
           // ignore
         }
         navigate(ROUTES.LOGIN)
+      } else if (isForgotPasswordFlow) {
+        // Get email from localStorage or use the one from URL state
+        const email = values.email || localStorage.getItem(STORAGE_KEYS.FORGOT_PASSWORD_EMAIL) || ''
+        if (!email) {
+          setErrorMessage('Email not found. Please request a new password reset.')
+          return
+        }
+        await resetPassword({
+          email,
+          newPassword: values.newPassword,
+          token,
+        })
+        setSuccessMessage('Your password has been updated successfully.')
+        // Clear stored email
+        localStorage.removeItem(STORAGE_KEYS.FORGOT_PASSWORD_EMAIL)
+        // Redirect to login after a short delay
+        setTimeout(() => {
+          navigate(ROUTES.LOGIN)
+        }, 1500)
       } else {
         await resetPassword({
           email: values.email,
@@ -118,7 +138,9 @@ const ResetPassword = () => {
     handleSubmit,
   } = useForm(
     {
-      email: isChangePasswordFlow ? (user?.email || '') : '',
+      email: isChangePasswordFlow || isForgotPasswordFlow
+        ? (user?.email || localStorage.getItem(STORAGE_KEYS.FORGOT_PASSWORD_EMAIL) || '')
+        : '',
       newPassword: '',
       confirmPassword: '',
     },
@@ -208,7 +230,7 @@ const ResetPassword = () => {
             onChange={(e) => handleChange('email', e.target.value)}
             onBlur={() => handleBlur('email')}
             error={touched.email && errors.email}
-            disabled={isChangePasswordFlow}
+            disabled={isChangePasswordFlow || isForgotPasswordFlow}
           />
           <FieldError error={touched.email ? errors.email : null} />
         </div>

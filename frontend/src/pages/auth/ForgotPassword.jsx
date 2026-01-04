@@ -14,11 +14,13 @@ import { useForm } from '../../hooks/useForm'
 import { validateEmail } from '../../validators'
 import { ROUTES } from '../../utils/constants'
 import { forgotPassword } from '../../services/authService'
+import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/icons/logo.png'
 import loginBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
 
 const ForgotPassword = () => {
   const t = useTheme()
+  const navigate = useNavigate()
   const [successMessage, setSuccessMessage] = useState('')
 
   const validators = {
@@ -29,7 +31,8 @@ const ForgotPassword = () => {
     setSuccessMessage('')
     try {
       await forgotPassword(values.email)
-      setSuccessMessage('If this email is registered, a password reset link has been sent.')
+      // Navigate to OTP verification page
+      navigate(`${ROUTES.OTP_VERIFICATION}?flow=forgot_password`)
     } catch (error) {
       throw error
     }
@@ -79,25 +82,10 @@ const ForgotPassword = () => {
       </Heading>
 
       <BodyText muted style={{ marginBottom: t.spacing(6) }}>
-        Enter the email address to receive the password reset link
+        Enter the email address to receive the password reset OTP
       </BodyText>
 
       <ErrorMessage message={errors.submit} style={{ marginBottom: t.spacing(4) }} />
-
-      {successMessage && (
-        <div
-          style={{
-            marginBottom: t.spacing(4),
-            padding: t.spacing(2),
-            borderRadius: t.radius.input,
-            backgroundColor: t.colors.success + '20',
-            color: t.colors.success,
-            fontSize: t.font.size.sm,
-          }}
-        >
-          {successMessage}
-        </div>
-      )}
 
       <form onSubmit={handleSubmit}>
         <div style={{ marginBottom: t.spacing(6) }}>

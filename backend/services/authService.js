@@ -32,6 +32,15 @@ const changePasswordTokens = new Map();
 const CHANGE_PASSWORD_OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const CHANGE_PASSWORD_OTP_COOLDOWN_MS = 30 * 1000; // 30 seconds
 
+// Forgot password flow (unauthenticated user) - in-memory stores
+// key: email, value: { otp, expiresAt, lastSentAt }
+const forgotPasswordOtps = new Map();
+// key: token, value: { email, expiresAt }
+const forgotPasswordTokens = new Map();
+
+const FORGOT_PASSWORD_OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const FORGOT_PASSWORD_OTP_COOLDOWN_MS = 30 * 1000; // 30 seconds
+
 function getMailer() {
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
     throw new Error('SMTP configuration is missing in environment variables');
@@ -164,24 +173,68 @@ async function login({ email, password }) {
 }
 
 async function forgotPassword({ email }) {
-  if (!adminAuth) {
-    throw new Error('Supabase admin client is not configured (service role key missing)');
+  // Check if user exists
+  const userRecord = await userRepository.findByEmail(email);
+  if (!userRecord) {
+    // Don't reveal if user exists or not for security
+    return { message: 'If this email is registered, an OTP has been sent.' };
   }
 
-  const redirectTo = FRONTEND_RESET_PASSWORD_URL;
-  if (!redirectTo) {
-    throw new Error('FRONTEND_RESET_PASSWORD_URL is not configured in environment');
+  // Rate limiting: check cooldown
+  const existingEntry = forgotPasswordOtps.get(String(email).toLowerCase());
+  if (existingEntry && existingEntry.lastSentAt) {
+    const timeSinceLastSent = Date.now() - existingEntry.lastSentAt;
+    if (timeSinceLastSent < FORGOT_PASSWORD_OTP_COOLDOWN_MS) {
+      const error = new Error('Please wait before requesting another OTP');
+      error.statusCode = 429;
+      throw error;
+    }
   }
 
-  const { error } = await adminAuth.auth.resetPasswordForEmail(email, {
-    redirectTo
+  const otp = generateOtp();
+  const expiresAt = Date.now() + FORGOT_PASSWORD_OTP_TTL_MS;
+  forgotPasswordOtps.set(String(email).toLowerCase(), { otp, expiresAt, lastSentAt: Date.now() });
+
+  const transporter = getMailer();
+  await transporter.sendMail({
+    from: SMTP_FROM || SMTP_USER,
+    to: email,
+    subject: 'Your Workmate password reset OTP',
+    text: `Your OTP to reset your password is ${otp}. It is valid for 10 minutes.`,
+    html: `<p>Your OTP to reset your password is <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
   });
 
-  if (error) {
-    throw new Error(error.message || 'Failed to send reset password email');
+  return { message: 'If this email is registered, an OTP has been sent.' };
+}
+
+async function verifyForgotPasswordOtp({ email, otp }) {
+  if (!email || !otp) {
+    throw new Error('Email and OTP are required');
   }
 
-  return { message: 'Password reset email sent' };
+  const entry = forgotPasswordOtps.get(String(email).toLowerCase());
+  if (!entry) {
+    throw new Error('No OTP request found for this email or it has expired');
+  }
+
+  if (Date.now() > entry.expiresAt) {
+    forgotPasswordOtps.delete(String(email).toLowerCase());
+    throw new Error('OTP has expired. Please request a new one.');
+  }
+
+  if (String(entry.otp) !== String(otp)) {
+    throw new Error('Invalid OTP');
+  }
+
+  // OTP verified; mint short-lived reset token
+  const token = generateOneTimeToken();
+  forgotPasswordTokens.set(token, {
+    email: String(email).toLowerCase(),
+    expiresAt: Date.now() + FORGOT_PASSWORD_OTP_TTL_MS
+  });
+  forgotPasswordOtps.delete(String(email).toLowerCase());
+
+  return { message: 'OTP verified', token };
 }
 
 async function resetPassword({ email, newPassword, token }) {
@@ -189,6 +242,55 @@ async function resetPassword({ email, newPassword, token }) {
     throw new Error('Supabase auth clients are not properly configured');
   }
 
+  // Check if token is from forgot password OTP flow
+  const forgotPasswordEntry = token ? forgotPasswordTokens.get(String(token)) : null;
+  if (forgotPasswordEntry) {
+    // Token is from OTP flow
+    if (Date.now() > forgotPasswordEntry.expiresAt) {
+      forgotPasswordTokens.delete(String(token));
+      throw new Error('Reset token has expired. Please request a new OTP.');
+    }
+    if (String(forgotPasswordEntry.email).toLowerCase() !== String(email).toLowerCase()) {
+      throw new Error('Email does not match reset token');
+    }
+
+    // Get user from database to find Supabase auth ID
+    const userRecord = await userRepository.findByEmail(email);
+    if (!userRecord) {
+      throw new Error('User not found');
+    }
+
+    // Find Supabase user by email
+    const { data: users, error: listError } = await adminAuth.auth.admin.listUsers();
+    if (listError) {
+      throw new Error('Failed to verify user');
+    }
+    const supabaseUser = users.users.find(u => u.email === email);
+    if (!supabaseUser) {
+      throw new Error('User not found in authentication system');
+    }
+
+    // Update password in Supabase Auth
+    const { error: updateAuthError } = await adminAuth.auth.admin.updateUserById(
+      supabaseUser.id,
+      {
+        password: newPassword
+      }
+    );
+
+    if (updateAuthError) {
+      throw new Error(updateAuthError.message || 'Failed to update password in Supabase auth');
+    }
+
+    // Update password hash in app database
+    const passwordHash = await hashPassword(newPassword);
+    await userRepository.updatePasswordHashByEmail(email, passwordHash);
+
+    forgotPasswordTokens.delete(String(token));
+    return { message: 'Password has been reset successfully' };
+  }
+
+  // Legacy Supabase token flow (from email link)
   // Verify the reset token and fetch the Supabase user
   const { data: userData, error: getUserError } = await dbAuth.auth.getUser(token);
   if (getUserError || !userData || !userData.user) {
@@ -323,6 +425,7 @@ module.exports = {
   verifySignupOtp,
   login,
   forgotPassword,
+  verifyForgotPasswordOtp,
   resetPassword,
   sendChangePasswordOtp,
   verifyChangePasswordOtp,
