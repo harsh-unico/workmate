@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import {
   DashboardSectionCard,
@@ -9,7 +9,7 @@ import {
 import { DangerZoneSection } from "../../components";
 import { useTheme } from "../../context/theme";
 import { getOrganisationById, getOrganisationMembers } from "../../services/orgService";
-import { getProjectById, updateProjectById } from "../../services/projectService";
+import { getProjectById, updateProjectById, deleteProjectById } from "../../services/projectService";
 import { listProjectMembers, createProjectMember, deleteProjectMemberById } from "../../services/projectMemberService";
 import { deleteAttachmentById, listAttachments, uploadAttachments } from "../../services/attachmentService";
 import uploadIcon from "../../assets/icons/upload.png";
@@ -36,6 +36,7 @@ const normalizeRich = (v) => {
 const ProjectSettings = () => {
   const t = useTheme();
   const { id, projectId } = useParams();
+  const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
@@ -52,6 +53,7 @@ const ProjectSettings = () => {
   const [projectMemberIdByEmail, setProjectMemberIdByEmail] = useState({});
   const [existingAttachments, setExistingAttachments] = useState([]);
   const [deletingAttachmentId, setDeletingAttachmentId] = useState(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -72,12 +74,21 @@ const ProjectSettings = () => {
     (async () => {
       try {
         // Load core project details first so the form is never left blank if member endpoints fail.
-        const [orgRes, projRes] = await Promise.all([
-          getOrganisationById(orgId),
-          getProjectById(pid),
-        ]);
+        const orgRes = await getOrganisationById(orgId);
         if (cancelled) return;
         setOrgName(orgRes?.data?.org_name || "");
+
+        let projRes;
+        try {
+          projRes = await getProjectById(pid);
+        } catch (e) {
+          if (String(e?.message || "").toLowerCase().includes("project not found")) {
+            navigate(`/organisations/${orgId}/projects`, { replace: true });
+            return;
+          }
+          throw e;
+        }
+        if (cancelled) return;
         const proj = projRes?.data || null;
         setProjName(proj?.name || "");
 
@@ -156,10 +167,14 @@ const ProjectSettings = () => {
         } else {
           setProjectMemberIdByEmail({});
         }
-      } catch {
-        if (!cancelled) setError("Failed to load project.");
-      }
-      finally {
+      } catch (err) {
+        if (cancelled) return;
+        if (String(err?.message || "").toLowerCase().includes("project not found")) {
+          navigate(`/organisations/${orgId}/projects`, { replace: true });
+          return;
+        }
+        setError(err?.message || "Failed to load project.");
+      } finally {
         if (!cancelled) setIsLoading(false);
       }
     })();
@@ -309,10 +324,25 @@ const ProjectSettings = () => {
     }
   };
 
-  const handleDeleteProject = () => {
-    // Placeholder for delete logic
-    // eslint-disable-next-line no-console
-    console.log("Delete project:", projName || projectId);
+  const handleDeleteProject = async () => {
+    if (!projectId) return;
+    if (isDeletingProject) return;
+
+    const ok = window.confirm(
+      `Delete project "${projName || projectId}"?\n\nThis will delete tasks, comments, notifications, attachments, and files.`
+    );
+    if (!ok) return;
+
+    setIsDeletingProject(true);
+    setError("");
+    setSuccess("");
+    try {
+      await deleteProjectById(projectId);
+      navigate(`/organisations/${id}/projects`, { replace: true });
+    } catch (e) {
+      setError(e?.message || "Failed to delete project.");
+      setIsDeletingProject(false);
+    }
   };
 
   const formatFileSize = (bytes) => {
@@ -587,8 +617,9 @@ const ProjectSettings = () => {
       <DangerZoneSection
         title="Delete this project"
         description="Once you delete a project, there is no going back. Please be certain."
-        buttonLabel="Delete Project"
+        buttonLabel={isDeletingProject ? "Deleting..." : "Delete Project"}
         onButtonClick={handleDeleteProject}
+        disabled={isDeletingProject || isLoading || isSaving}
       />
     </OrganisationLayout>
   );

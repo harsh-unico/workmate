@@ -72,5 +72,10 @@ export const updateOrganisation = async (orgId, payload) => {
   return apiClient.patch(`${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}`, payload)
 }
 
+export const deleteOrganisationById = async (orgId) => {
+  if (!orgId) throw new Error('orgId is required')
+  return apiClient.delete(`${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}`)
+}
+
 
 

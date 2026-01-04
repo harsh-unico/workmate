@@ -74,13 +74,24 @@ async function findManyByOrgId(orgId) {
   return base.rowSchema ? (data || []).map((row) => base.rowSchema.parse(row)) : (data || []);
 }
 
+async function deleteMany(filters) {
+  let query = db.from(base.table).delete().select('*');
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    query = query.eq(key, value);
+  });
+  const { data, error } = await query;
+  if (error) throw error;
+  return base.rowSchema ? (data || []).map((row) => base.rowSchema.parse(row)) : (data || []);
+}
+
 module.exports = {
   ...base,
   findManyByIds,
   findManyCreatedByUser,
   findIdsByOrgId,
   countByOrgId,
-  findManyByOrgId
+  findManyByOrgId,
+  deleteMany
 };
 
 

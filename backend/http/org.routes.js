@@ -25,6 +25,7 @@ router.post('/:orgId/members/invite', requireAuth, orgController.inviteOrgMember
 // Org details + update
 router.get('/:orgId', requireAuth, orgController.getOrganisationById);
 router.patch('/:orgId', requireAuth, orgController.updateOrganisation);
+router.delete('/:orgId', requireAuth, orgController.deleteOrganisationById);
 
 router.get('/', requireAuth, orgController.listOrganisations);
 // Preferred: pass userId in URL so backend can create org_members row

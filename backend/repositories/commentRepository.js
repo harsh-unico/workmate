@@ -25,9 +25,27 @@ async function deleteMany(filters) {
   return (data || []).map((row) => (Comment.RowSchema ? Comment.RowSchema.parse(row) : row));
 }
 
+async function findManyByTaskIds(taskIds) {
+  const ids = Array.from(new Set((taskIds || []).filter(Boolean).map(String)));
+  if (ids.length === 0) return [];
+  const { data, error } = await db.from(base.table).select('*').in('task_id', ids);
+  if (error) throw error;
+  return (data || []).map((row) => (Comment.RowSchema ? Comment.RowSchema.parse(row) : row));
+}
+
+async function deleteManyByTaskIds(taskIds) {
+  const ids = Array.from(new Set((taskIds || []).filter(Boolean).map(String)));
+  if (ids.length === 0) return [];
+  const { data, error } = await db.from(base.table).delete().in('task_id', ids).select('*');
+  if (error) throw error;
+  return (data || []).map((row) => (Comment.RowSchema ? Comment.RowSchema.parse(row) : row));
+}
+
 module.exports = {
   ...base,
-  deleteMany
+  deleteMany,
+  findManyByTaskIds,
+  deleteManyByTaskIds
 };
 
 

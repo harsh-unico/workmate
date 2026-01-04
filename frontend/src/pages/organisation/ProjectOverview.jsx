@@ -36,14 +36,28 @@ const ProjectOverview = () => {
     setProjectError("");
     (async () => {
       try {
-        const [orgRes, projRes, statsRes, teamRes] = await Promise.all([
-          getOrganisationById(id),
-          getProjectById(projectId),
+        const orgRes = await getOrganisationById(id);
+        if (cancelled) return;
+        setOrgName(orgRes?.data?.org_name || "Organisation");
+
+        let projRes;
+        try {
+          projRes = await getProjectById(projectId);
+        } catch (e) {
+          // If the project was deleted, navigate back to projects list to avoid repeated 404 spam.
+          if (String(e?.message || "").toLowerCase().includes("project not found")) {
+            navigate(`/organisations/${id}/projects`, { replace: true });
+            return;
+          }
+          throw e;
+        }
+        if (cancelled) return;
+
+        const [statsRes, teamRes] = await Promise.all([
           getProjectTaskStats(projectId),
           getProjectTeamStats(projectId),
         ]);
         if (cancelled) return;
-        setOrgName(orgRes?.data?.org_name || "Organisation");
         setProject(projRes?.data || null);
         setStatsData({
           progressPercent: Number(statsRes?.data?.progressPercent ?? 0),
@@ -76,6 +90,10 @@ const ProjectOverview = () => {
         setTeamMembers(mapped);
       } catch (e) {
         if (cancelled) return;
+        if (String(e?.message || "").toLowerCase().includes("project not found")) {
+          navigate(`/organisations/${id}/projects`, { replace: true });
+          return;
+        }
         setOrgName("Organisation");
         setProject(null);
         setProjectError(e?.message || "Failed to load project.");

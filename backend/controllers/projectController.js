@@ -7,6 +7,36 @@ const userRepository = require('../repositories/userRepository');
 const orgMemberRepository = require('../repositories/orgMemberRepository');
 const attachmentRepository = require('../repositories/attachmentRepository');
 const taskRepository = require('../repositories/taskRepository');
+const commentRepository = require('../repositories/commentRepository');
+const notificationRepository = require('../repositories/notificationRepository');
+const { supabase, supabaseAdmin } = require('../config/supabase');
+
+const storageClient = supabaseAdmin || supabase;
+
+async function bestEffortRemoveStorageObjects(attachmentRows) {
+  const rows = Array.isArray(attachmentRows) ? attachmentRows : [];
+  const byBucket = new Map();
+
+  for (const a of rows) {
+    const url = String(a?.file_url || '');
+    const m = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+    if (!m || !m[1] || !m[2]) continue;
+    const bucket = m[1];
+    const key = m[2];
+    if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+    byBucket.get(bucket).push(key);
+  }
+
+  for (const [bucket, keys] of byBucket.entries()) {
+    try {
+      if (keys.length) {
+        await storageClient.storage.from(bucket).remove(keys);
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
 
 async function handle(controllerFn, req, res) {
   try {
@@ -15,9 +45,12 @@ async function handle(controllerFn, req, res) {
       res.json(result);
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
     const status = err.statusCode || 400;
+    // Avoid spamming server logs for expected client errors (404/403/etc)
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
     res.status(status).json({
       error: err.message || 'Unexpected error'
     });
@@ -36,12 +69,42 @@ async function requireProjectMember(req, projectId) {
     project_id: String(projectId),
     user_id: String(userId)
   });
-  if (!membership) {
-    const error = new Error('Forbidden');
-    error.statusCode = 403;
+  if (membership) return membership;
+
+  const project = await projectRepository.findById(String(projectId));
+  if (!project) {
+    const error = new Error('Project not found');
+    error.statusCode = 404;
     throw error;
   }
-  return membership;
+
+  // Allow project creator even if project_members row is missing (legacy data / imports)
+  if (project.created_by && String(project.created_by) === String(userId)) {
+    return { is_project_creator: true, user_id: userId, project_id: String(projectId), org_id: project.org_id || null };
+  }
+
+  // Allow organisation members (and admins) to access projects within their org.
+  // This avoids 403s when project_members isn't fully populated.
+  const orgId = project && project.org_id ? String(project.org_id) : null;
+  if (orgId) {
+    const orgMembership = await orgMemberRepository.findOne({
+      org_id: String(orgId),
+      user_id: String(userId)
+    });
+    if (orgMembership) {
+      return {
+        is_org_member: true,
+        is_org_admin: Boolean(orgMembership.is_admin),
+        org_id: orgId,
+        user_id: userId,
+        project_id: String(projectId)
+      };
+    }
+  }
+
+  const error = new Error('Forbidden');
+  error.statusCode = 403;
+  throw error;
 }
 
 async function requireProjectAdmin(req, projectId) {
@@ -53,11 +116,31 @@ async function requireProjectAdmin(req, projectId) {
   }
   const roles = [PROJECT_MEMBER_ROLE.OWNER, PROJECT_MEMBER_ROLE.MANAGER];
   const adminProjectIds = await projectMemberRepository.findAdminProjectIdsForUser(userId, { roles });
-  if (!adminProjectIds.includes(String(projectId))) {
-    const error = new Error('Forbidden');
-    error.statusCode = 403;
+  if (adminProjectIds.includes(String(projectId))) return;
+
+  const project = await projectRepository.findById(String(projectId));
+  if (!project) {
+    const error = new Error('Project not found');
+    error.statusCode = 404;
     throw error;
   }
+
+  // Allow project creator (legacy data)
+  if (project.created_by && String(project.created_by) === String(userId)) return;
+
+  // Fallback: allow org admins to manage projects in their org
+  const orgId = project && project.org_id ? String(project.org_id) : null;
+  if (orgId) {
+    const orgMembership = await orgMemberRepository.findOne({
+      org_id: String(orgId),
+      user_id: String(userId)
+    });
+    if (orgMembership && orgMembership.is_admin) return;
+  }
+
+  const error = new Error('Forbidden');
+  error.statusCode = 403;
+  throw error;
 }
 
 function createProject(req, res) {
@@ -351,6 +434,75 @@ function getProjectTeamStats(req, res) {
   }, req, res);
 }
 
+function deleteProjectById(req, res) {
+  return handle(async () => {
+    const projectId = req.params && req.params.projectId ? String(req.params.projectId) : null;
+    if (!projectId) {
+      const error = new Error('projectId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireProjectAdmin(req, projectId);
+
+    const existing = await projectRepository.findById(projectId);
+    if (!existing) {
+      const error = new Error('Project not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // 1) Gather tasks + comments (for attachment cleanup & cascade deletes)
+    const tasks = await taskRepository.findMany({ project_id: String(projectId) });
+    const taskIds = Array.from(new Set((tasks || []).map((t) => t.id).filter(Boolean).map(String)));
+
+    const comments = taskIds.length > 0 ? await commentRepository.findManyByTaskIds(taskIds) : [];
+    const commentIds = Array.from(new Set((comments || []).map((c) => c.id).filter(Boolean).map(String)));
+
+    // 2) Delete notifications (project + task) first (avoid FK issues)
+    const deletedProjectNotifications = await notificationRepository.deleteMany({ project_id: String(projectId) });
+    const deletedTaskNotifications =
+      taskIds.length > 0 ? await notificationRepository.deleteManyByTaskIds(taskIds) : [];
+
+    // 3) Delete attachments (project + tasks + comments) and remove storage objects (best-effort)
+    const deletedProjectAttachments = await attachmentRepository.deleteManyByEntityIds('project', [projectId]);
+    const deletedTaskAttachments =
+      taskIds.length > 0 ? await attachmentRepository.deleteManyByEntityIds('task', taskIds) : [];
+    const deletedCommentAttachments =
+      commentIds.length > 0 ? await attachmentRepository.deleteManyByEntityIds('comment', commentIds) : [];
+
+    await bestEffortRemoveStorageObjects([
+      ...(deletedProjectAttachments || []),
+      ...(deletedTaskAttachments || []),
+      ...(deletedCommentAttachments || [])
+    ]);
+
+    // 4) Delete comments + tasks
+    const deletedComments = taskIds.length > 0 ? await commentRepository.deleteManyByTaskIds(taskIds) : [];
+    const deletedTasks = await taskRepository.deleteMany({ project_id: String(projectId) });
+
+    // 5) Delete project members
+    const deletedProjectMembers = await projectMemberRepository.deleteMany({ project_id: String(projectId) });
+
+    // 6) Delete project row
+    const deletedProject = await projectRepository.deleteById(projectId);
+
+    return {
+      data: deletedProject,
+      deleted: {
+        tasks: (deletedTasks || []).length,
+        comments: (deletedComments || []).length,
+        attachments:
+          (deletedProjectAttachments || []).length +
+          (deletedTaskAttachments || []).length +
+          (deletedCommentAttachments || []).length,
+        notifications: (deletedProjectNotifications || []).length + (deletedTaskNotifications || []).length,
+        project_members: (deletedProjectMembers || []).length
+      }
+    };
+  }, req, res);
+}
+
 function listAdminProjects(req, res) {
   return handle(async () => {
     const userId = req.user && req.user.id ? String(req.user.id) : null;
@@ -396,6 +548,7 @@ module.exports = {
   updateProjectById,
   getProjectTaskStats,
   getProjectTeamStats,
+  deleteProjectById,
   listAdminProjects,
   listProjectsCreatedByUser
 };

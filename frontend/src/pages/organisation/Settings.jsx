@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { OrganisationLayout } from "../../layouts";
 import {
   DashboardSectionCard,
@@ -9,7 +9,11 @@ import {
 import { DangerZoneSection } from "../../components";
 import { useTheme } from "../../context/theme";
 import DeleteOrganisationPopup from "./DeleteOrganisationPopup";
-import { getOrganisationById, updateOrganisation } from "../../services/orgService";
+import {
+  deleteOrganisationById,
+  getOrganisationById,
+  updateOrganisation,
+} from "../../services/orgService";
 
 const readRichTextHtml = (rootId) => {
   try {
@@ -25,6 +29,7 @@ const readRichTextHtml = (rootId) => {
 const OrganisationSettings = () => {
   const t = useTheme();
   const { id } = useParams();
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [formData, setFormData] = useState({
     organisationName: "",
@@ -44,6 +49,7 @@ const OrganisationSettings = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeletingOrg, setIsDeletingOrg] = useState(false);
 
   const organisationName = formData.organisationName || "Organisation Settings";
 
@@ -130,9 +136,29 @@ const OrganisationSettings = () => {
     setIsDeleteOpen(false);
   };
 
-  const handleConfirmDelete = (typedName) => {
-    console.log("Delete organisation:", { id, typedName, organisationName });
-    setIsDeleteOpen(false);
+  const handleConfirmDelete = async (typedName) => {
+    if (!id) return;
+    const expected = String(organisationName || "").trim();
+    const typed = String(typedName || "").trim();
+    if (!expected || typed !== expected) {
+      setError("Organisation name does not match.");
+      return;
+    }
+    if (isDeletingOrg) return;
+
+    setIsDeletingOrg(true);
+    setError("");
+    setSuccess("");
+    try {
+      await deleteOrganisationById(id);
+      setIsDeleteOpen(false);
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("Failed to delete organisation:", err);
+      setError(err?.message || "Failed to delete organisation.");
+    } finally {
+      setIsDeletingOrg(false);
+    }
   };
 
   useEffect(() => {
@@ -290,6 +316,7 @@ const OrganisationSettings = () => {
         organisationName={organisationName}
         onCancel={handleCloseDelete}
         onConfirm={handleConfirmDelete}
+        isDeleting={isDeletingOrg}
       />
     </OrganisationLayout>
   );

@@ -19,6 +19,8 @@ router.get('/:projectId/team/stats', requireAuth, projectController.getProjectTe
 router.get('/:projectId', requireAuth, projectController.getProjectById);
 // Update project (must be a project admin: owner/manager)
 router.patch('/:projectId', requireAuth, projectController.updateProjectById);
+// Delete project (must be a project admin: owner/manager)
+router.delete('/:projectId', requireAuth, projectController.deleteProjectById);
 // Preferred: pass userId in URL so backend can create project_members row
 router.post('/:userId', requireAuth, projectController.createProject);
 // Backwards compatible: if userId is not provided, we fall back to req.user.id

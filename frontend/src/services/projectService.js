@@ -39,5 +39,10 @@ export const getProjectTeamStats = async (projectId) => {
   )
 }
 
+export const deleteProjectById = async (projectId) => {
+  if (!projectId) throw new Error('projectId is required')
+  return apiClient.delete(`${API_ENDPOINTS.PROJECT.LIST}/${encodeURIComponent(String(projectId))}`)
+}
+
 
 

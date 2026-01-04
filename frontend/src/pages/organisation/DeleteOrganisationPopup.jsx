@@ -6,6 +6,7 @@ const DeleteOrganisationPopup = ({
   organisationName,
   onCancel,
   onConfirm,
+  isDeleting = false,
 }) => {
   const t = useTheme();
   const [value, setValue] = useState("");
@@ -87,6 +88,7 @@ const DeleteOrganisationPopup = ({
           <button
             type="button"
             onClick={onCancel}
+            disabled={isDeleting}
             style={{
               minWidth: 140,
               padding: `${t.spacing(2)} ${t.spacing(4)}`,
@@ -95,7 +97,8 @@ const DeleteOrganisationPopup = ({
               backgroundColor: "transparent",
               color: "#e5e7eb",
               fontSize: t.font.size.md,
-              cursor: "pointer",
+              cursor: isDeleting ? "not-allowed" : "pointer",
+              opacity: isDeleting ? 0.7 : 1,
             }}
           >
             Cancel
@@ -112,12 +115,12 @@ const DeleteOrganisationPopup = ({
               color: "#ffffff",
               fontSize: t.font.size.md,
               fontWeight: t.font.weight.semiBold,
-              cursor: "pointer",
-              opacity: value ? 1 : 0.7,
+              cursor: isDeleting ? "not-allowed" : "pointer",
+              opacity: value && !isDeleting ? 1 : 0.7,
             }}
-            disabled={!value}
+            disabled={!value || isDeleting}
           >
-            Delete
+            {isDeleting ? "Deleting..." : "Delete"}
           </button>
         </div>
       </div>

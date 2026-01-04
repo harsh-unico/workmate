@@ -5,6 +5,38 @@ const orgMemberRepository = require('../repositories/orgMemberRepository');
 const projectRepository = require('../repositories/projectRepository');
 const taskRepository = require('../repositories/taskRepository');
 const userRepository = require('../repositories/userRepository');
+const projectMemberRepository = require('../repositories/projectMemberRepository');
+const commentRepository = require('../repositories/commentRepository');
+const attachmentRepository = require('../repositories/attachmentRepository');
+const notificationRepository = require('../repositories/notificationRepository');
+const { supabase, supabaseAdmin } = require('../config/supabase');
+
+const storageClient = supabaseAdmin || supabase;
+
+async function bestEffortRemoveStorageObjects(attachmentRows) {
+  const rows = Array.isArray(attachmentRows) ? attachmentRows : [];
+  const byBucket = new Map();
+
+  for (const a of rows) {
+    const url = String(a?.file_url || '');
+    const m = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/);
+    if (!m || !m[1] || !m[2]) continue;
+    const bucket = m[1];
+    const key = m[2];
+    if (!byBucket.has(bucket)) byBucket.set(bucket, []);
+    byBucket.get(bucket).push(key);
+  }
+
+  for (const [bucket, keys] of byBucket.entries()) {
+    try {
+      if (keys.length) {
+        await storageClient.storage.from(bucket).remove(keys);
+      }
+    } catch {
+      // ignore
+    }
+  }
+}
 
 async function handle(controllerFn, req, res) {
   try {
@@ -403,6 +435,93 @@ function inviteOrgMembers(req, res) {
   }, req, res);
 }
 
+function deleteOrganisationById(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireOrgAdmin(req, orgId);
+
+    const existing = await orgRepository.findById(orgId);
+    if (!existing) {
+      const error = new Error('Organisation not found');
+      error.statusCode = 404;
+      throw error;
+    }
+
+    // 1) Gather project ids
+    const projectIds = await projectRepository.findIdsByOrgId(orgId);
+
+    // 2) Gather tasks + comments for cascade + attachment cleanup
+    const tasks = projectIds.length > 0 ? await taskRepository.findManyByProjectIds(projectIds) : [];
+    const taskIds = Array.from(new Set((tasks || []).map((t) => t.id).filter(Boolean).map(String)));
+
+    const comments = taskIds.length > 0 ? await commentRepository.findManyByTaskIds(taskIds) : [];
+    const commentIds = Array.from(new Set((comments || []).map((c) => c.id).filter(Boolean).map(String)));
+
+    // 3) Delete notifications (org + project + task)
+    const deletedOrgNotifications = await notificationRepository.deleteMany({ org_id: String(orgId) });
+    const deletedProjectNotifications =
+      projectIds.length > 0 ? await notificationRepository.deleteManyByProjectIds(projectIds) : [];
+    const deletedTaskNotifications =
+      taskIds.length > 0 ? await notificationRepository.deleteManyByTaskIds(taskIds) : [];
+
+    // 4) Delete attachments (project + tasks + comments) and remove storage objects (best-effort)
+    const deletedProjectAttachments =
+      projectIds.length > 0 ? await attachmentRepository.deleteManyByEntityIds('project', projectIds) : [];
+    const deletedTaskAttachments =
+      taskIds.length > 0 ? await attachmentRepository.deleteManyByEntityIds('task', taskIds) : [];
+    const deletedCommentAttachments =
+      commentIds.length > 0 ? await attachmentRepository.deleteManyByEntityIds('comment', commentIds) : [];
+
+    await bestEffortRemoveStorageObjects([
+      ...(deletedProjectAttachments || []),
+      ...(deletedTaskAttachments || []),
+      ...(deletedCommentAttachments || [])
+    ]);
+
+    // 5) Delete comments + tasks
+    const deletedComments = taskIds.length > 0 ? await commentRepository.deleteManyByTaskIds(taskIds) : [];
+    const deletedTasks = projectIds.length > 0 ? await taskRepository.deleteManyByProjectIds(projectIds) : [];
+
+    // 6) Delete project members
+    const deletedProjectMembers =
+      projectIds.length > 0 ? await projectMemberRepository.deleteManyByProjectIds(projectIds) : [];
+
+    // 7) Delete projects
+    const deletedProjects = projectIds.length > 0 ? await projectRepository.deleteMany({ org_id: String(orgId) }) : [];
+
+    // 8) Delete org members
+    const deletedOrgMembers = await orgMemberRepository.deleteMany({ org_id: String(orgId) });
+
+    // 9) Delete org
+    const deletedOrg = await orgRepository.deleteById(orgId);
+
+    return {
+      data: deletedOrg,
+      deleted: {
+        projects: (deletedProjects || []).length,
+        tasks: (deletedTasks || []).length,
+        comments: (deletedComments || []).length,
+        project_members: (deletedProjectMembers || []).length,
+        org_members: (deletedOrgMembers || []).length,
+        attachments:
+          (deletedProjectAttachments || []).length +
+          (deletedTaskAttachments || []).length +
+          (deletedCommentAttachments || []).length,
+        notifications:
+          (deletedOrgNotifications || []).length +
+          (deletedProjectNotifications || []).length +
+          (deletedTaskNotifications || []).length
+      }
+    };
+  }, req, res);
+}
+
 module.exports = {
   listOrganisations,
   listAdminOrganisations,
@@ -410,6 +529,7 @@ module.exports = {
   createOrganisation,
   getOrganisationById,
   updateOrganisation,
+  deleteOrganisationById,
   getOrgProjectCount,
   getOrgMemberCount,
   getOrgTaskCount,

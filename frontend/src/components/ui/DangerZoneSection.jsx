@@ -6,6 +6,7 @@ const DangerZoneSection = ({
   description,
   buttonLabel,
   onButtonClick,
+  disabled = false,
 }) => {
   const t = useTheme();
 
@@ -73,11 +74,13 @@ const DangerZoneSection = ({
             color: "#FFFFFF",
             fontFamily: t.font.family,
             fontSize: t.font.size.md,
-            cursor: "pointer",
+            cursor: disabled ? "not-allowed" : "pointer",
             height: "45px",
             whiteSpace: "nowrap",
+            opacity: disabled ? 0.7 : 1,
           }}
           onClick={onButtonClick}
+          disabled={disabled}
         >
           {buttonLabel}
         </button>

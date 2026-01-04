@@ -14,6 +14,16 @@ const base = createRepository({
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const db = supabaseAdmin || supabase;
 
+async function deleteMany(filters) {
+  let query = db.from(base.table).delete().select('*');
+  Object.entries(filters || {}).forEach(([key, value]) => {
+    query = query.eq(key, value);
+  });
+  const { data, error } = await query;
+  if (error) throw error;
+  return base.rowSchema ? (data || []).map((row) => base.rowSchema.parse(row)) : (data || []);
+}
+
 async function findAdminOrgIdsForUser(userId) {
   const uid = userId ? String(userId) : null;
   if (!uid) return [];
@@ -42,6 +52,7 @@ async function countByOrgId(orgId) {
 
 module.exports = {
   ...base,
+  deleteMany,
   findAdminOrgIdsForUser,
   countByOrgId
 };
