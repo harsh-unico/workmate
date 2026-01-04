@@ -36,6 +36,11 @@ router.post(
 router.post('/logout', authController.logout);
 router.get('/me', requireAuth, authController.me);
 
+// Change password (OTP) - must be logged in
+router.post('/change-password/send-otp', requireAuth, authController.sendChangePasswordOtp);
+router.post('/change-password/verify-otp', requireAuth, authController.verifyChangePasswordOtp);
+router.post('/change-password/reset', requireAuth, authController.resetPasswordWithChangeToken);
+
 module.exports = router;
 
 

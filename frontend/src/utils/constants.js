@@ -13,6 +13,7 @@ export const API_CONFIG = {
  */
 export const API_ENDPOINTS = {
   AUTH: {
+    BASE: '/auth',
     SIGNUP: '/auth/signup',
     SEND_OTP: '/auth/send-otp',
     VERIFY_OTP: '/auth/verify-otp',

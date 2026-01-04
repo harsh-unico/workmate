@@ -14,17 +14,28 @@ import { useTheme } from '../../context/theme'
 import { useForm } from '../../hooks/useForm'
 import { validatePassword } from '../../validators'
 import { ROUTES } from '../../utils/constants'
-import { resetPassword } from '../../services/authService'
+import { resetChangePassword, resetPassword } from '../../services/authService'
+import { useAuth } from '../../hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/icons/logo.png'
 import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
 
 const ResetPassword = () => {
   const t = useTheme()
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
+  const searchParams = new URLSearchParams(window.location.search)
+  const flow = searchParams.get('flow') || ''
+  const isChangePasswordFlow = flow === 'change_password'
+
   const validators = {
     email: (value) => {
+      if (isChangePasswordFlow) {
+        return { isValid: true, error: '' }
+      }
       if (!value || value.trim() === '') {
         return {
           isValid: false,
@@ -65,7 +76,6 @@ const ResetPassword = () => {
 
     try {
       // Supabase typically sends `access_token` in the reset URL; we forward it as `token`
-      const searchParams = new URLSearchParams(window.location.search)
       const token =
         searchParams.get('token') ||
         searchParams.get('access_token') ||
@@ -76,12 +86,23 @@ const ResetPassword = () => {
         return
       }
 
-      await resetPassword({
-        email: values.email,
-        newPassword: values.newPassword,
-        token,
-      })
-      setSuccessMessage('Your password has been updated successfully.')
+      if (isChangePasswordFlow) {
+        await resetChangePassword({ token, newPassword: values.newPassword })
+        setSuccessMessage('Your password has been updated successfully.')
+        try {
+          await logout()
+        } catch {
+          // ignore
+        }
+        navigate(ROUTES.LOGIN)
+      } else {
+        await resetPassword({
+          email: values.email,
+          newPassword: values.newPassword,
+          token,
+        })
+        setSuccessMessage('Your password has been updated successfully.')
+      }
     } catch (error) {
       setErrorMessage(error.message || 'Failed to reset password.')
     }
@@ -97,7 +118,7 @@ const ResetPassword = () => {
     handleSubmit,
   } = useForm(
     {
-      email: '',
+      email: isChangePasswordFlow ? (user?.email || '') : '',
       newPassword: '',
       confirmPassword: '',
     },
@@ -187,6 +208,7 @@ const ResetPassword = () => {
             onChange={(e) => handleChange('email', e.target.value)}
             onBlur={() => handleBlur('email')}
             error={touched.email && errors.email}
+            disabled={isChangePasswordFlow}
           />
           <FieldError error={touched.email ? errors.email : null} />
         </div>

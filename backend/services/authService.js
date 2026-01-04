@@ -1,6 +1,7 @@
 'use strict';
 
 const nodemailer = require('nodemailer');
+const crypto = require('crypto');
 
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const {
@@ -22,6 +23,15 @@ const adminAuth = supabaseAdmin;
 // In production, consider persisting this in a dedicated table.
 const signupOtps = new Map(); // key: email, value: { otp, expiresAt, password, name, isAdmin }
 
+// Change password flow (logged-in user) - in-memory stores
+// key: authId, value: { otp, expiresAt }
+const changePasswordOtps = new Map();
+// key: token, value: { authId, email, expiresAt }
+const changePasswordTokens = new Map();
+
+const CHANGE_PASSWORD_OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const CHANGE_PASSWORD_OTP_COOLDOWN_MS = 30 * 1000; // 30 seconds
+
 function getMailer() {
   if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS) {
     throw new Error('SMTP configuration is missing in environment variables');
@@ -40,6 +50,11 @@ function getMailer() {
 
 function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function generateOneTimeToken() {
+  // 32 bytes -> 64 hex chars
+  return crypto.randomBytes(32).toString('hex');
 }
 
 async function sendSignupOtp({ email, password, name, isAdmin }) {
@@ -202,12 +217,116 @@ async function resetPassword({ email, newPassword, token }) {
   return { message: 'Password has been reset successfully' };
 }
 
+async function sendChangePasswordOtp({ authId, email }) {
+  if (!authId || !email) {
+    throw new Error('Not authenticated');
+  }
+
+  const key = String(authId);
+  const existing = changePasswordOtps.get(key);
+  if (existing && Date.now() < existing.expiresAt) {
+    const lastSentAt = Number(existing.lastSentAt || 0);
+    if (lastSentAt && Date.now() - lastSentAt < CHANGE_PASSWORD_OTP_COOLDOWN_MS) {
+      const err = new Error('Please wait a few seconds before requesting another OTP.');
+      err.statusCode = 429;
+      throw err;
+    }
+  }
+
+  const otp = generateOtp();
+  const now = Date.now();
+  const expiresAt = now + CHANGE_PASSWORD_OTP_TTL_MS;
+  changePasswordOtps.set(key, {
+    otp,
+    expiresAt,
+    email: String(email),
+    lastSentAt: now
+  });
+
+  const transporter = getMailer();
+  await transporter.sendMail({
+    from: SMTP_FROM || SMTP_USER,
+    to: email,
+    subject: 'Your Workmate change password OTP',
+    text: `Your OTP to change your password is ${otp}. It is valid for 10 minutes.`,
+    html: `<p>Your OTP to change your password is <strong>${otp}</strong>. It is valid for 10 minutes.</p>`
+  });
+
+  return { message: 'OTP sent successfully' };
+}
+
+async function verifyChangePasswordOtp({ authId, email, otp }) {
+  if (!authId || !email) {
+    throw new Error('Not authenticated');
+  }
+  const entry = changePasswordOtps.get(String(authId));
+  if (!entry) {
+    throw new Error('No OTP request found or it has expired');
+  }
+  if (Date.now() > entry.expiresAt) {
+    changePasswordOtps.delete(String(authId));
+    throw new Error('OTP has expired. Please request a new one.');
+  }
+  if (String(entry.email || '').toLowerCase() !== String(email).toLowerCase()) {
+    throw new Error('Email mismatch');
+  }
+  if (String(entry.otp) !== String(otp)) {
+    throw new Error('Invalid OTP');
+  }
+
+  // OTP verified; mint short-lived reset token
+  const token = generateOneTimeToken();
+  changePasswordTokens.set(token, { authId: String(authId), email: String(email), expiresAt: Date.now() + 10 * 60 * 1000 });
+  changePasswordOtps.delete(String(authId));
+
+  return { message: 'OTP verified', token };
+}
+
+async function resetPasswordWithChangeToken({ authId, email, token, newPassword }) {
+  if (!authId || !email) {
+    throw new Error('Not authenticated');
+  }
+  if (!adminAuth) {
+    throw new Error('Supabase admin client is not configured (service role key missing)');
+  }
+  const entry = token ? changePasswordTokens.get(String(token)) : null;
+  if (!entry) {
+    throw new Error('Invalid or expired reset token');
+  }
+  if (Date.now() > entry.expiresAt) {
+    changePasswordTokens.delete(String(token));
+    throw new Error('Reset token has expired. Please request a new OTP.');
+  }
+  if (String(entry.authId) !== String(authId) || String(entry.email).toLowerCase() !== String(email).toLowerCase()) {
+    throw new Error('Invalid reset token');
+  }
+
+  // 1) Update Supabase Auth password for the current user
+  const { error: updateAuthError } = await adminAuth.auth.admin.updateUserById(String(authId), {
+    password: newPassword
+  });
+  if (updateAuthError) {
+    throw new Error(updateAuthError.message || 'Failed to update password in Supabase auth');
+  }
+
+  // 2) Update app DB password hash
+  const passwordHash = await hashPassword(newPassword);
+  await userRepository.updatePasswordHashByEmail(email, passwordHash);
+
+  changePasswordTokens.delete(String(token));
+
+  return { message: 'Password has been updated successfully' };
+}
+
 module.exports = {
   sendSignupOtp,
   verifySignupOtp,
   login,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  sendChangePasswordOtp,
+  verifyChangePasswordOtp,
+  resetPasswordWithChangeToken
 };
 
 

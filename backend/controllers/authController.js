@@ -100,6 +100,67 @@ function me(req, res) {
   }, req, res);
 }
 
+function sendChangePasswordOtp(req, res) {
+  return handle(async () => {
+    const authId = req.user && req.user.authId ? String(req.user.authId) : null;
+    const email = req.user && req.user.email ? String(req.user.email) : null;
+    if (!authId || !email) {
+      const error = new Error('Not authenticated');
+      error.statusCode = 401;
+      throw error;
+    }
+    return authService.sendChangePasswordOtp({ authId, email });
+  }, req, res);
+}
+
+function verifyChangePasswordOtp(req, res) {
+  return handle(async () => {
+    const authId = req.user && req.user.authId ? String(req.user.authId) : null;
+    const email = req.user && req.user.email ? String(req.user.email) : null;
+    const { otp } = req.body || {};
+    if (!authId || !email) {
+      const error = new Error('Not authenticated');
+      error.statusCode = 401;
+      throw error;
+    }
+    if (!otp) {
+      const error = new Error('otp is required');
+      error.statusCode = 400;
+      throw error;
+    }
+    return authService.verifyChangePasswordOtp({ authId, email, otp: String(otp) });
+  }, req, res);
+}
+
+function resetPasswordWithChangeToken(req, res) {
+  return handle(async () => {
+    const authId = req.user && req.user.authId ? String(req.user.authId) : null;
+    const email = req.user && req.user.email ? String(req.user.email) : null;
+    const { token, newPassword } = req.body || {};
+    if (!authId || !email) {
+      const error = new Error('Not authenticated');
+      error.statusCode = 401;
+      throw error;
+    }
+    if (!token) {
+      const error = new Error('token is required');
+      error.statusCode = 400;
+      throw error;
+    }
+    if (!newPassword) {
+      const error = new Error('newPassword is required');
+      error.statusCode = 400;
+      throw error;
+    }
+    return authService.resetPasswordWithChangeToken({
+      authId,
+      email,
+      token: String(token),
+      newPassword: String(newPassword)
+    });
+  }, req, res);
+}
+
 module.exports = {
   signup,
   sendOtp,
@@ -108,7 +169,10 @@ module.exports = {
   forgotPassword,
   resetPassword,
   logout,
-  me
+  me,
+  sendChangePasswordOtp,
+  verifyChangePasswordOtp,
+  resetPasswordWithChangeToken
 };
 
 

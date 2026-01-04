@@ -8,7 +8,7 @@ import {
 } from '../../components'
 import { useTheme } from '../../context/theme'
 import { ROUTES, STORAGE_KEYS } from '../../utils/constants'
-import { verifyOtp } from '../../services/authService'
+import { sendChangePasswordOtp, verifyChangePasswordOtp, verifyOtp } from '../../services/authService'
 import { useNavigate } from 'react-router-dom'
 import logo from '../../assets/icons/logo.png'
 import authBackgroundVideo from '../../assets/videos/6917969_Motion_Graphics_Motion_Graphic_1920x1080.mp4'
@@ -23,6 +23,7 @@ const OtpVerification = () => {
   const [secondsLeft, setSecondsLeft] = useState(INITIAL_SECONDS)
   const [isResendEnabled, setIsResendEnabled] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isResending, setIsResending] = useState(false)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -45,16 +46,26 @@ const OtpVerification = () => {
     setIsSubmitting(true)
     setError('')
     try {
-      const email = localStorage.getItem(STORAGE_KEYS.SIGNUP_EMAIL)
-      if (!email) {
-        setError('Signup session expired. Please sign up again.')
-        setIsSubmitting(false)
-        return
-      }
+      const params = new URLSearchParams(window.location.search)
+      const flow = params.get('flow') || ''
 
-      await verifyOtp({ email, otp: code })
-      // After successful verification, redirect to login
-      navigate(ROUTES.LOGIN)
+      if (flow === 'change_password') {
+        const res = await verifyChangePasswordOtp({ otp: code })
+        const token = res?.token || res?.data?.token
+        if (!token) throw new Error('Missing reset token')
+        navigate(`${ROUTES.RESET_PASSWORD}?flow=change_password&token=${encodeURIComponent(String(token))}`)
+      } else {
+        const email = localStorage.getItem(STORAGE_KEYS.SIGNUP_EMAIL)
+        if (!email) {
+          setError('Signup session expired. Please sign up again.')
+          setIsSubmitting(false)
+          return
+        }
+
+        await verifyOtp({ email, otp: code })
+        // After successful verification, redirect to login
+        navigate(ROUTES.LOGIN)
+      }
     } catch (err) {
       setError(err?.message || 'Failed to verify OTP. Please try again.')
     } finally {
@@ -63,9 +74,29 @@ const OtpVerification = () => {
   }
 
   const handleResend = () => {
-    if (!isResendEnabled) return
-    // TODO: call backend resend API
-    console.log('Resend OTP')
+    if (!isResendEnabled || isResending) return
+    const params = new URLSearchParams(window.location.search)
+    const flow = params.get('flow') || ''
+    if (flow === 'change_password') {
+      setIsResending(true)
+      setError('')
+      // Immediately disable + restart timer to prevent double clicks; rollback if request fails.
+      setSecondsLeft(INITIAL_SECONDS)
+      setIsResendEnabled(false)
+      sendChangePasswordOtp()
+        .then(() => {
+          // timer already restarted
+        })
+        .catch((e) => {
+          setError(e?.message || 'Failed to resend OTP.')
+          setSecondsLeft(0)
+          setIsResendEnabled(true)
+        })
+        .finally(() => setIsResending(false))
+      return
+    }
+
+    // Signup resend not implemented yet
     setSecondsLeft(INITIAL_SECONDS)
     setIsResendEnabled(false)
   }
@@ -153,17 +184,17 @@ const OtpVerification = () => {
           <button
             type="button"
             onClick={handleResend}
-            disabled={!isResendEnabled}
+            disabled={!isResendEnabled || isResending}
             style={{
               background: 'none',
               border: 'none',
               color: isResendEnabled ? t.colors.link : t.colors.subtleText,
               fontSize: t.font.size.sm,
-              cursor: isResendEnabled ? 'pointer' : 'default',
+              cursor: isResendEnabled && !isResending ? 'pointer' : 'default',
               padding: 0,
             }}
           >
-            Resend
+            {isResending ? 'Sending...' : 'Resend'}
           </button>
         </BodyText>
       </div>

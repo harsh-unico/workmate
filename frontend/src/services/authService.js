@@ -126,3 +126,22 @@ export const getCurrentUser = async () => {
   }
 }
 
+// Change password (OTP) - requires logged in user (cookie)
+export const sendChangePasswordOtp = async () => {
+  return apiClient.post(`${API_ENDPOINTS.AUTH.BASE}/change-password/send-otp`)
+}
+
+export const verifyChangePasswordOtp = async ({ otp }) => {
+  if (!otp) throw new Error('otp is required')
+  return apiClient.post(`${API_ENDPOINTS.AUTH.BASE}/change-password/verify-otp`, { otp })
+}
+
+export const resetChangePassword = async ({ token, newPassword }) => {
+  if (!token) throw new Error('token is required')
+  if (!newPassword) throw new Error('newPassword is required')
+  return apiClient.post(`${API_ENDPOINTS.AUTH.BASE}/change-password/reset`, {
+    token,
+    newPassword,
+  })
+}
+

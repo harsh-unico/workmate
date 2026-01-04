@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/theme";
 import { useAuth } from "../../hooks/useAuth";
 import { ROUTES } from "../../utils/constants";
+import { sendChangePasswordOtp } from "../../services/authService";
 import sampleProfile from "@assets/images/sampleProfile.png";
 import editIcon from "@assets/icons/editIconBlack.png";
 
@@ -14,13 +15,24 @@ const ProfileDropdown = ({ onClose }) => {
   const t = useTheme();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   const displayName = user?.name || user?.fullName || "Jane Doe";
   const email = user?.email || "janedoe@gmail.com";
 
-  const handleChangePassword = () => {
-    navigate(ROUTES.SETTINGS);
-    if (onClose) onClose();
+  const handleChangePassword = async () => {
+    if (isSendingOtp) return;
+    setIsSendingOtp(true);
+    try {
+      await sendChangePasswordOtp();
+      navigate(`${ROUTES.OTP_VERIFICATION}?flow=change_password`);
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert(e?.message || "Failed to send OTP");
+    } finally {
+      setIsSendingOtp(false);
+      if (onClose) onClose();
+    }
   };
 
   const handleEditProfile = () => {
@@ -166,6 +178,7 @@ const ProfileDropdown = ({ onClose }) => {
         <button
           type="button"
           onClick={handleChangePassword}
+          disabled={isSendingOtp}
           style={{
             flex: 1,
             height: "50px",
@@ -175,11 +188,12 @@ const ProfileDropdown = ({ onClose }) => {
             marginRight: "20px",
             fontSize: t.font.size.md,
             fontFamily: t.font.family,
-            cursor: "pointer",
+            cursor: isSendingOtp ? "not-allowed" : "pointer",
             borderRadius: "0 25px 25px 0",
+            opacity: isSendingOtp ? 0.8 : 1,
           }}
         >
-          Change Password
+          {isSendingOtp ? "Sending..." : "Change Password"}
         </button>
         <button
           type="button"
