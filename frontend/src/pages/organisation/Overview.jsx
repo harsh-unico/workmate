@@ -10,6 +10,7 @@ import {
   getOrgProjectsCount,
   getOrgTasksCount,
   getOrganisationById,
+  getOrganisationProjectsSummary,
 } from "../../services/orgService";
 
 const OrganisationOverview = () => {
@@ -27,6 +28,7 @@ const OrganisationOverview = () => {
   const [countsError, setCountsError] = useState("");
   const [org, setOrg] = useState(null);
   const [orgError, setOrgError] = useState("");
+  const [topProjects, setTopProjects] = useState([]);
 
   const organisationName = org?.org_name || "Organisation";
   const hasAbout =
@@ -44,16 +46,18 @@ const OrganisationOverview = () => {
 
     (async () => {
       try {
-        const [orgRes, projectsRes, membersRes, tasksRes] = await Promise.all([
+        const [orgRes, projectsRes, membersRes, tasksRes, projectsSummaryRes] = await Promise.all([
           getOrganisationById(orgId),
           getOrgProjectsCount(orgId),
           getOrgMembersCount(orgId),
           getOrgTasksCount(orgId),
+          getOrganisationProjectsSummary(orgId, { limit: 5 }),
         ]);
 
         if (cancelled) return;
 
         setOrg(orgRes?.data || null);
+        setTopProjects(Array.isArray(projectsSummaryRes?.data) ? projectsSummaryRes.data : []);
         setCounts({
           projects: Number(projectsRes?.data?.count ?? 0),
           members: Number(membersRes?.data?.count ?? 0),
@@ -67,6 +71,7 @@ const OrganisationOverview = () => {
         setOrgError(msg);
         setCounts({ projects: null, members: null, tasks: null });
         setOrg(null);
+        setTopProjects([]);
       }
     })();
 
@@ -83,14 +88,6 @@ const OrganisationOverview = () => {
     ],
     [counts.members, counts.projects, counts.tasks]
   );
-
-  const overviewProjects = [
-    { name: "Market Research", due: "Jan 18, 2026", progress: 100 },
-    { name: "Model Training", due: "Jan 15, 2026", progress: 72 },
-    { name: "Project Beta", due: "Dec 22, 2025", progress: 90 },
-    { name: "API Integration", due: "Dec 05, 2025", progress: 45 },
-    { name: "Project Alpha", due: "Nov 30, 2025", progress: 70 },
-  ];
 
   const renderOverview = () => (
     <div
@@ -171,9 +168,15 @@ const OrganisationOverview = () => {
       >
         {/* Recent Projects */}
         <DashboardSectionCard
-          title="Recent Projects"
+          title="Projects"
           actionLabel="View All"
-          onAction={() => {}}
+          actionPlacement="header"
+          actionPosition="right"
+          onAction={() =>
+            navigate(`/organisations/${id}/projects`, {
+              state: { from: `${location.pathname}${location.search}` },
+            })
+          }
         >
           <div
             style={{
@@ -182,8 +185,20 @@ const OrganisationOverview = () => {
               gap: t.spacing(3),
             }}
           >
-            {overviewProjects.map((project) => (
-              <div key={project.name}>
+            {topProjects.length === 0 ? (
+              <div style={{ color: t.colors.textMutedDark, fontSize: t.font.size.sm }}>
+                No projects found.
+              </div>
+            ) : (
+              topProjects.map((project) => {
+                const total = Number(project?.total_tasks ?? 0);
+                const completed = Number(project?.completed_tasks ?? 0);
+                const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+                const due = project?.end_date
+                  ? new Date(project.end_date).toLocaleDateString()
+                  : "—";
+                return (
+                  <div key={project.id || project.name}>
                 <div
                   style={{
                     display: "flex",
@@ -201,7 +216,7 @@ const OrganisationOverview = () => {
                   >
                     {project.name}
                   </span>
-                  <span>Due {project.due}</span>
+                  <span>Due {due}</span>
                 </div>
                 <div
                   style={{
@@ -214,7 +229,7 @@ const OrganisationOverview = () => {
                 >
                   <div
                     style={{
-                      width: `${project.progress}%`,
+                      width: `${percent}%`,
                       height: "100%",
                       backgroundColor: t.colors.progressBar,
                     }}
@@ -228,7 +243,9 @@ const OrganisationOverview = () => {
                     color: t.colors.textMutedDark,
                   }}
                 >
-                  <span>{project.progress}%</span>
+                  <span>
+                    {completed}/{total} tasks
+                  </span>
                   <button
                     type="button"
                     style={{
@@ -238,12 +255,19 @@ const OrganisationOverview = () => {
                       cursor: "pointer",
                       fontSize: t.font.size.xs,
                     }}
+                    onClick={() =>
+                      navigate(`/organisations/${id}/projects/${project.id}/overview`, {
+                        state: { projectName: project.name },
+                      })
+                    }
                   >
                     View Details
                   </button>
                 </div>
-              </div>
-            ))}
+                  </div>
+                );
+              })
+            )}
           </div>
         </DashboardSectionCard>
 

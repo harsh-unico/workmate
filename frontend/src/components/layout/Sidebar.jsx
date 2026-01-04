@@ -10,7 +10,6 @@ import notificationsIcon from '../../assets/icons/notificationsIcon.png'
 import profileIcon from '../../assets/icons/profileIcon.png'
 import settingsIcon from '../../assets/icons/settingsIcon.png'
 import signoutIcon from '../../assets/icons/signoutIcon.png'
-import summaryIcon from '../../assets/icons/summaryIcon.png'
 import teamIcon from '../../assets/icons/teamIcon.png'
 import projectIcon from '../../assets/icons/projectIcon.png'
 
@@ -78,12 +77,6 @@ const Sidebar = () => {
         label: 'Team Members',
         icon: teamIcon,
         path: orgPath('team'),
-      },
-      {
-        id: 'reports',
-        label: 'Summary & Reports',
-        icon: summaryIcon,
-        path: orgPath('reports'),
       },
       {
         id: 'settings',

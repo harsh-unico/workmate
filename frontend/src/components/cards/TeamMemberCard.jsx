@@ -200,24 +200,6 @@ const TeamMemberCard = ({ member, onRemove }) => {
         >
           {member.role}
         </div>
-        <button
-          type="button"
-          style={{
-            border: "none",
-            background: "none",
-            padding: 0,
-            fontSize: t.font.size.sm,
-            fontWeight: t.font.weight.semiBold,
-            color: t.colors.accentBlue,
-            cursor: "pointer",
-            textDecoration: "none",
-          }}
-        >
-          {member.activeProjects}{" "}
-          {member.status === "inactive"
-            ? "Inactive Projects"
-            : "Active Projects"}
-        </button>
       </div>
 
       {/* Status pill */}

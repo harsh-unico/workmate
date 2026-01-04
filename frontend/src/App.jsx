@@ -11,7 +11,6 @@ import OrganisationOverview from "./pages/organisation/Overview";
 import OrganisationProjects from "./pages/organisation/Projects";
 import CreateProject from "./pages/organisation/CreateProject";
 import OrganisationTeamMembers from "./pages/organisation/TeamMembers";
-import OrganisationSummaryReports from "./pages/organisation/SummaryReports";
 import OrganisationSettings from "./pages/organisation/Settings";
 import ProjectOverview from "./pages/organisation/ProjectOverview";
 import ProjectTasks from "./pages/project/Tasks";
@@ -147,14 +146,6 @@ function App() {
           element={
             <PrivateRoute>
               <OrganisationTeamMembers />
-            </PrivateRoute>
-          }
-        />
-        <Route
-          path="/organisations/:id/reports"
-          element={
-            <PrivateRoute>
-              <OrganisationSummaryReports />
             </PrivateRoute>
           }
         />

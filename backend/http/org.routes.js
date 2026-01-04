@@ -18,6 +18,7 @@ router.get('/:orgId/members/count', requireAuth, orgController.getOrgMemberCount
 router.get('/:orgId/tasks/count', requireAuth, orgController.getOrgTaskCount);
 
 // Org related resources
+router.get('/:orgId/projects/summary', requireAuth, orgController.listOrgProjectSummaries);
 router.get('/:orgId/projects', requireAuth, orgController.listOrgProjects);
 router.get('/:orgId/members', requireAuth, orgController.listOrgMembersDetailed);
 router.post('/:orgId/members/invite', requireAuth, orgController.inviteOrgMembers);

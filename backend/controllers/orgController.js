@@ -343,6 +343,53 @@ function listOrgProjects(req, res) {
   }, req, res);
 }
 
+function listOrgProjectSummaries(req, res) {
+  return handle(async () => {
+    const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
+    if (!orgId) {
+      const error = new Error('orgId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireOrgMember(req, orgId);
+
+    const limit = Math.max(
+      1,
+      Math.min(10, Number(req.query?.limit ?? 5) || 5)
+    );
+
+    const projects = await projectRepository.findManyByOrgId(orgId);
+    const top = (projects || []).slice(0, limit);
+    const projectIds = top.map((p) => p.id).filter(Boolean).map(String);
+
+    const tasks = projectIds.length > 0 ? await taskRepository.findManyByProjectIds(projectIds) : [];
+    const countsByProjectId = new Map();
+    for (const t of tasks || []) {
+      const pid = t?.project_id ? String(t.project_id) : null;
+      if (!pid) continue;
+      const cur = countsByProjectId.get(pid) || { total: 0, completed: 0 };
+      cur.total += 1;
+      if (String(t?.status || '').toLowerCase() === 'done') cur.completed += 1;
+      countsByProjectId.set(pid, cur);
+    }
+
+    const rows = top.map((p) => {
+      const pid = String(p.id);
+      const c = countsByProjectId.get(pid) || { total: 0, completed: 0 };
+      return {
+        id: p.id,
+        name: p.name,
+        end_date: p.end_date || null,
+        total_tasks: c.total,
+        completed_tasks: c.completed
+      };
+    });
+
+    return { data: rows };
+  }, req, res);
+}
+
 function listOrgMembersDetailed(req, res) {
   return handle(async () => {
     const orgId = req.params && req.params.orgId ? String(req.params.orgId) : null;
@@ -359,6 +406,27 @@ function listOrgMembersDetailed(req, res) {
     const users = await userRepository.findManyByIds(userIds);
     const usersById = new Map(users.map((u) => [String(u.id), u]));
 
+    // Active projects per user in this organisation:
+    // Count project_members rows for org projects where projects.status === 'active'
+    const projects = await projectRepository.findManyByOrgId(orgId);
+    const activeProjectIds = (projects || [])
+      .filter((p) => String(p?.status || '').toLowerCase() === 'active')
+      .map((p) => p.id)
+      .filter(Boolean)
+      .map(String);
+
+    const activeProjectMembers =
+      activeProjectIds.length > 0
+        ? await projectMemberRepository.findManyByProjectIds(activeProjectIds)
+        : [];
+
+    const activeProjectCountByUserId = new Map();
+    for (const pm of activeProjectMembers || []) {
+      const uid = pm?.user_id ? String(pm.user_id) : null;
+      if (!uid) continue;
+      activeProjectCountByUserId.set(uid, (activeProjectCountByUserId.get(uid) || 0) + 1);
+    }
+
     return {
       data: memberships.map((m) => ({
         id: m.id,
@@ -367,6 +435,7 @@ function listOrgMembersDetailed(req, res) {
         department: m.department || null,
         is_admin: !!m.is_admin,
         joined_at: m.joined_at || null,
+        active_projects: activeProjectCountByUserId.get(String(m.user_id)) || 0,
         user: usersById.get(String(m.user_id)) || null
       }))
     };
@@ -534,6 +603,7 @@ module.exports = {
   getOrgMemberCount,
   getOrgTaskCount,
   listOrgProjects,
+  listOrgProjectSummaries,
   listOrgMembersDetailed,
   inviteOrgMembers
 };

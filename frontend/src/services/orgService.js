@@ -52,6 +52,16 @@ export const getOrganisationProjects = async (orgId) => {
   )
 }
 
+export const getOrganisationProjectsSummary = async (orgId, { limit = 5 } = {}) => {
+  if (!orgId) throw new Error('orgId is required')
+  const params = new URLSearchParams()
+  if (limit !== undefined && limit !== null && String(limit) !== '') params.set('limit', String(limit))
+  const qs = params.toString()
+  return apiClient.get(
+    `${API_ENDPOINTS.ORG.LIST}/${encodeURIComponent(String(orgId))}/projects/summary${qs ? `?${qs}` : ''}`
+  )
+}
+
 export const getOrganisationMembers = async (orgId) => {
   if (!orgId) throw new Error('orgId is required')
   return apiClient.get(

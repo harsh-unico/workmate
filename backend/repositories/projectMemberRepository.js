@@ -14,6 +14,14 @@ const base = createRepository({
 const { supabase, supabaseAdmin } = require('../config/supabase');
 const db = supabaseAdmin || supabase;
 
+async function findManyByProjectIds(projectIds) {
+  const ids = Array.from(new Set((projectIds || []).filter(Boolean).map(String)));
+  if (ids.length === 0) return [];
+  const { data, error } = await db.from(base.table).select('*').in('project_id', ids);
+  if (error) throw error;
+  return base.rowSchema ? (data || []).map((row) => base.rowSchema.parse(row)) : (data || []);
+}
+
 async function deleteMany(filters) {
   let query = db.from(base.table).delete().select('*');
   Object.entries(filters || {}).forEach(([key, value]) => {
@@ -51,6 +59,7 @@ async function deleteManyByProjectIds(projectIds) {
 
 module.exports = {
   ...base,
+  findManyByProjectIds,
   deleteMany,
   deleteManyByProjectIds,
   findAdminProjectIdsForUser

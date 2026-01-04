@@ -56,7 +56,7 @@ const OrganisationTeamMembers = () => {
             id: m.id, // org_members row id (used for removal later if needed)
             name: displayName,
             role: m.is_admin ? "Admin" : "Member",
-            activeProjects: 0,
+            activeProjects: Number(m?.active_projects ?? 0),
             status: toUiStatus(user.status),
             avatarBg: AVATAR_COLORS[index % AVATAR_COLORS.length],
             email: user.email || "",
