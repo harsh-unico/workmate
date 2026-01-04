@@ -1136,33 +1136,35 @@ const TaskDetails = () => {
               >
                 Description
               </h3>
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(
-                    `/organisations/${id}/projects/${projectId}/tasks/${taskId}/edit`,
-                    {
-                      state: {
-                        projectName,
-                        task: currentTask,
-                      },
-                    }
-                  )
-                }
-                style={{
-                  border: "none",
-                  background: "none",
-                  cursor: "pointer",
-                  padding: t.spacing(1),
-                  borderRadius: "999px",
-                }}
-              >
-                <img
-                  src={editIconBlack}
-                  alt="Edit description"
-                  style={{ width: 18, height: 18, display: "block" }}
-                />
-              </button>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/organisations/${id}/projects/${projectId}/tasks/${taskId}/edit`,
+                      {
+                        state: {
+                          projectName,
+                          task: currentTask,
+                        },
+                      }
+                    )
+                  }
+                  style={{
+                    border: "none",
+                    background: "none",
+                    cursor: "pointer",
+                    padding: t.spacing(1),
+                    borderRadius: "999px",
+                  }}
+                >
+                  <img
+                    src={editIconBlack}
+                    alt="Edit description"
+                    style={{ width: 18, height: 18, display: "block" }}
+                  />
+                </button>
+              ) : null}
             </div>
             {isLoading && !currentTask.title ? (
               <div
@@ -1225,24 +1227,26 @@ const TaskDetails = () => {
                 justifyContent: "flex-end",
               }}
             >
-              <button
-                type="button"
-                onClick={handleDeleteTask}
-                disabled={isDeletingTask}
-                style={{
-                  padding: `${t.spacing(2)} ${t.spacing(4)}`,
-                  borderRadius: "10px",
-                  border: "none",
-                  backgroundColor: "#ef4444",
-                  color: "#ffffff",
-                  fontSize: t.font.size.sm,
-                  fontWeight: t.font.weight.medium,
-                  cursor: isDeletingTask ? "not-allowed" : "pointer",
-                  opacity: isDeletingTask ? 0.7 : 1,
-                }}
-              >
-                {isDeletingTask ? "Deleting..." : "Delete Task"}
-              </button>
+              {isAdmin ? (
+                <button
+                  type="button"
+                  onClick={handleDeleteTask}
+                  disabled={isDeletingTask}
+                  style={{
+                    padding: `${t.spacing(2)} ${t.spacing(4)}`,
+                    borderRadius: "10px",
+                    border: "none",
+                    backgroundColor: "#ef4444",
+                    color: "#ffffff",
+                    fontSize: t.font.size.sm,
+                    fontWeight: t.font.weight.medium,
+                    cursor: isDeletingTask ? "not-allowed" : "pointer",
+                    opacity: isDeletingTask ? 0.7 : 1,
+                  }}
+                >
+                  {isDeletingTask ? "Deleting..." : "Delete Task"}
+                </button>
+              ) : null}
             </div>
           </div>
         </DashboardSectionCard>

@@ -391,10 +391,27 @@ function updateTaskById(req, res) {
 
     const effectiveProjectId = projectId !== undefined ? projectId : existing.project_id;
 
+    // Employees cannot edit task fields other than status.
+    const isAdmin = Boolean(req.user?.profile?.is_admin);
+    const hasNonStatusEdits =
+      title !== undefined ||
+      description !== undefined ||
+      priority !== undefined ||
+      dueDate !== undefined ||
+      projectId !== undefined ||
+      assigneeId !== undefined ||
+      assigneeEmail !== undefined ||
+      assignerId !== undefined ||
+      completedAt !== undefined;
+    if (!isAdmin && hasNonStatusEdits) {
+      const error = new Error('Only admin can edit task details');
+      error.statusCode = 403;
+      throw error;
+    }
+
     // Only global admins can move a task to DONE (employees can move up to IN_REVIEW)
     if (status !== undefined) {
       const nextStatus = normalizeTaskStatus(status);
-      const isAdmin = Boolean(req.user?.profile?.is_admin);
       if (String(nextStatus || '').toLowerCase() === String(TASK_STATUS.DONE).toLowerCase() && !isAdmin) {
         const error = new Error('Only admin can move task to Done');
         error.statusCode = 403;
@@ -450,6 +467,14 @@ function updateTaskById(req, res) {
 
 function deleteTaskById(req, res) {
   return handle(async () => {
+    // Only admin can delete tasks
+    const isAdmin = Boolean(req.user?.profile?.is_admin);
+    if (!isAdmin) {
+      const error = new Error('Only admin can delete tasks');
+      error.statusCode = 403;
+      throw error;
+    }
+
     const id = req.params && req.params.id ? String(req.params.id) : null;
     if (!id) {
       const error = new Error('Task id is required');

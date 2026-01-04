@@ -8,8 +8,9 @@ import {
 } from "../../components";
 import { useTheme } from "../../context/theme";
 import { useAuth } from "../../hooks/useAuth";
-import { listMyProjects } from "../../services/projectService";
+import { getProjectById, listMyProjects } from "../../services/projectService";
 import { listMyTasks, updateTaskById } from "../../services/taskService";
+import AboutProjectPopup from "../organisation/AboutProjectPopup";
 
 const COLUMN_DEFS = [
   { id: "todo", title: "To Do" },
@@ -74,6 +75,8 @@ const EmployeeDashboard = () => {
   const [sortOption, setSortOption] = useState("due-desc");
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(null);
+  const [selectedProjectDetails, setSelectedProjectDetails] = useState(null);
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +133,26 @@ const EmployeeDashboard = () => {
       }
     })();
 
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProject?.id]);
+
+  useEffect(() => {
+    const pid = selectedProject?.id;
+    if (!pid) {
+      setSelectedProjectDetails(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getProjectById(pid);
+        if (!cancelled) setSelectedProjectDetails(res?.data || null);
+      } catch {
+        if (!cancelled) setSelectedProjectDetails(null);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -261,6 +284,20 @@ const EmployeeDashboard = () => {
     ? `My Tasks · ${selectedProject.name}`
     : "My Tasks";
 
+  const projectDescriptionHtml = useMemo(() => {
+    const p = selectedProjectDetails;
+    return typeof p?.description === "string"
+      ? p.description
+      : typeof p?.about === "string"
+      ? p.about
+      : "";
+  }, [selectedProjectDetails]);
+
+  const hasProjectAbout =
+    typeof projectDescriptionHtml === "string" &&
+    projectDescriptionHtml.trim() !== "" &&
+    projectDescriptionHtml.trim() !== "<p><br></p>";
+
   return (
     <EmployeeLayout
       pageTitle={pageTitle}
@@ -271,6 +308,71 @@ const EmployeeDashboard = () => {
       selectedProjectId={selectedProject?.id}
       onSelectProject={setSelectedProject}
     >
+      {/* Project overview (About) */}
+      <div style={{ marginBottom: t.spacing(4) }}>
+        <div
+          style={{
+            backgroundColor: t.colors.cardBackground,
+            borderRadius: "18px",
+            padding: t.spacing(4),
+            boxShadow: "0 18px 40px rgba(15, 23, 42, 0.15)",
+            border: `1px solid ${t.colors.cardBorder}`,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: t.spacing(3),
+            }}
+          >
+            <h3
+              style={{
+                margin: 0,
+                fontSize: t.font.size.lg,
+                fontWeight: t.font.weight.semiBold,
+                color: t.colors.textHeadingDark,
+              }}
+            >
+              About {selectedProject?.name || "Project"}
+            </h3>
+            <button
+              type="button"
+              onClick={() => setIsAboutOpen(true)}
+              style={{
+                border: "none",
+                background: "none",
+                color: t.colors.link,
+                fontSize: t.font.size.sm,
+                fontWeight: t.font.weight.semiBold,
+                cursor: "pointer",
+              }}
+            >
+              Read More...
+            </button>
+          </div>
+
+          {hasProjectAbout ? (
+            <div
+              style={{
+                margin: 0,
+                color: t.colors.textBodyDark,
+                lineHeight: 1.6,
+                fontSize: t.font.size.md,
+                maxHeight: "110px",
+                overflow: "hidden",
+              }}
+              dangerouslySetInnerHTML={{ __html: projectDescriptionHtml }}
+            />
+          ) : (
+            <p style={{ margin: 0, color: t.colors.textMutedDark }}>
+              No description provided.
+            </p>
+          )}
+        </div>
+      </div>
+
       {error ? (
         <div
           style={{
@@ -382,6 +484,19 @@ const EmployeeDashboard = () => {
           ))
         )}
       </div>
+
+      <AboutProjectPopup
+        isOpen={isAboutOpen}
+        onClose={() => setIsAboutOpen(false)}
+        projectName={selectedProject?.name || "Project"}
+        descriptionHtml={projectDescriptionHtml || ""}
+        attachments={
+          Array.isArray(selectedProjectDetails?.attachments)
+            ? selectedProjectDetails.attachments
+            : []
+        }
+        error=""
+      />
     </EmployeeLayout>
   );
 };
