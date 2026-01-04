@@ -52,12 +52,25 @@ async function countByProjectIds(projectIds) {
   return count || 0;
 }
 
+async function findProjectIdsByAssigneeId(assigneeId) {
+  const uid = assigneeId ? String(assigneeId) : null;
+  if (!uid) return [];
+  const { data, error } = await db
+    .from(base.table)
+    .select('project_id')
+    .eq('assignee_id', uid)
+    .not('project_id', 'is', null);
+  if (error) throw error;
+  return Array.from(new Set((data || []).map((r) => r.project_id).filter(Boolean).map(String)));
+}
+
 module.exports = {
   ...base,
   deleteMany,
   findManyByProjectIds,
   deleteManyByProjectIds,
-  countByProjectIds
+  countByProjectIds,
+  findProjectIdsByAssigneeId
 };
 
 

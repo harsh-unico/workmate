@@ -11,6 +11,7 @@ import downloadIcon from "../../assets/icons/download.png";
 import { getOrganisationById } from "../../services/orgService";
 import { getProjectById } from "../../services/projectService";
 import { deleteTaskById, getTaskById, updateTaskById } from "../../services/taskService";
+import { useAuth } from "../../hooks/useAuth";
 import {
   createComment,
   listComments as listTaskComments,
@@ -266,6 +267,8 @@ const TaskDetails = () => {
   const { id, projectId, taskId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.is_admin);
 
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
@@ -566,7 +569,7 @@ const TaskDetails = () => {
       event.preventDefault();
     }
     const submit = async () => {
-      const value = newComment.trim();
+    const value = newComment.trim();
       if (!value) return;
       if (isSubmittingComment) return;
       setCommentsError("");
@@ -589,8 +592,8 @@ const TaskDetails = () => {
           }
         }
 
-        setNewComment("");
-        setCommentAttachments([]);
+    setNewComment("");
+    setCommentAttachments([]);
         await refreshComments();
       } catch (e) {
         setCommentsError(e?.message || "Failed to add comment.");
@@ -708,13 +711,16 @@ const TaskDetails = () => {
 
   const renderStatusChip = (statusOption) => {
     const isActive = statusOption.toLowerCase() === String(displayStatus || "").toLowerCase();
+    const isDoneOption = String(statusOption || "").toLowerCase() === "done";
+    const isRoleBlocked = !isAdmin && isDoneOption && !isActive;
+    const disabled = isUpdatingStatus || isRoleBlocked;
 
     return (
       <button
         key={statusOption}
         type="button"
         onClick={() => handleStatusChange(statusOption)}
-        disabled={isUpdatingStatus}
+        disabled={disabled}
         style={{
           padding: `${t.spacing(1.5)} ${t.spacing(3)}`,
           borderRadius: "8px",
@@ -727,8 +733,8 @@ const TaskDetails = () => {
           color: isActive ? t.colors.primary : t.colors.textBodyDark,
           fontSize: t.font.size.sm,
           fontFamily: t.font.family,
-          cursor: isUpdatingStatus ? "not-allowed" : "pointer",
-          opacity: isUpdatingStatus ? 0.7 : 1,
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.7 : 1,
         }}
       >
         {statusOption}
@@ -778,17 +784,17 @@ const TaskDetails = () => {
     const isUpdating = updatingCommentId && String(updatingCommentId) === String(comment?.id);
 
     return (
-      <div
-        key={comment.id}
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: t.spacing(3),
+    <div
+      key={comment.id}
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        gap: t.spacing(3),
           marginLeft: depth ? t.spacing(6) : 0,
           paddingLeft: depth ? t.spacing(3) : 0,
           borderLeft: depth ? `2px solid ${t.colors.cardBorder}` : "none",
-        }}
-      >
+      }}
+    >
       <div
         style={{
           width: 40,
@@ -995,8 +1001,8 @@ const TaskDetails = () => {
         )}
         <div style={{ display: "flex", alignItems: "center", gap: t.spacing(2) }}>
           {!isReply ? (
-            <button
-              type="button"
+        <button
+          type="button"
               onClick={() => {
                 setActiveReplyToId(comment?.id || null);
                 setReplyText("");
@@ -1004,16 +1010,16 @@ const TaskDetails = () => {
                 setEditingCommentId(null);
                 setEditText("");
               }}
-              style={{
-                border: "none",
-                background: "none",
-                padding: 0,
-                fontSize: t.font.size.xs,
-                color: t.colors.link,
-                cursor: "pointer",
-              }}
-            >
-              Reply
+          style={{
+            border: "none",
+            background: "none",
+            padding: 0,
+            fontSize: t.font.size.xs,
+            color: t.colors.link,
+            cursor: "pointer",
+          }}
+        >
+          Reply
             </button>
           ) : null}
 
@@ -1030,7 +1036,7 @@ const TaskDetails = () => {
             }}
           >
             Edit
-          </button>
+        </button>
         </div>
 
         {isReplying && (
@@ -1057,8 +1063,8 @@ const TaskDetails = () => {
           </div>
         )}
       </div>
-      </div>
-    );
+    </div>
+  );
   };
 
   return (
@@ -1171,13 +1177,13 @@ const TaskDetails = () => {
               </div>
             ) : hasDescription ? (
               <div
-                style={{
-                  margin: 0,
-                  marginBottom: t.spacing(4),
-                  color: t.colors.textBodyDark,
-                  fontSize: t.font.size.sm,
-                  lineHeight: 1.6,
-                }}
+              style={{
+                margin: 0,
+                marginBottom: t.spacing(4),
+                color: t.colors.textBodyDark,
+                fontSize: t.font.size.sm,
+                lineHeight: 1.6,
+              }}
                 // Quill stores HTML; we render it as-is for rich text display.
                 dangerouslySetInnerHTML={{ __html: descriptionHtml }}
               />
@@ -1365,17 +1371,17 @@ const TaskDetails = () => {
               borderRadius: t.radius.card,
               backgroundColor: "#fee2e2",
               color: "#b91c1c",
-              fontSize: t.font.size.sm,
-            }}
-          >
+                fontSize: t.font.size.sm,
+              }}
+            >
             {commentsError}
-          </div>
+            </div>
         )}
 
         <CommentComposer
           t={t}
           attachmentIcon={attachmentIcon}
-          value={newComment}
+                  value={newComment}
           onChange={setNewComment}
           onSubmit={handleAddComment}
           isSubmitting={isSubmittingComment}
@@ -1386,27 +1392,27 @@ const TaskDetails = () => {
           onAddAttachmentClick={handleCommentAttachmentClick}
           fileInputRef={commentFileInputRef}
           onFilesSelected={handleCommentFilesSelected}
-          placeholder="Add a comment..."
+                  placeholder="Add a comment..."
           submitLabel="Comment"
           openLocalAttachment={openLocalAttachment}
           getCommentAttachmentIcon={getCommentAttachmentIcon}
-        />
+                />
 
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
             gap: t.spacing(4),
-          }}
-        >
+                }}
+              >
           {isCommentsLoading ? (
             <div style={{ color: t.colors.textMutedDark, fontSize: t.font.size.sm }}>
               Loading comments...
-            </div>
+                      </div>
           ) : commentThreads.length === 0 ? (
             <div style={{ color: t.colors.textMutedDark, fontSize: t.font.size.sm }}>
               No comments yet.
-            </div>
+                  </div>
           ) : (
             commentThreads.map((c) => (
               <div key={c.id}>
@@ -1414,7 +1420,7 @@ const TaskDetails = () => {
                 {Array.isArray(c.children) && c.children.length > 0 ? (
                   <div style={{ marginTop: t.spacing(2), display: "flex", flexDirection: "column", gap: t.spacing(3) }}>
                     {c.children.map((child) => renderComment(child, 1))}
-                  </div>
+                </div>
                 ) : null}
               </div>
             ))

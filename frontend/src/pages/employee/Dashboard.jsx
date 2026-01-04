@@ -1,18 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { OrganisationLayout } from "../../layouts";
+import { useNavigate } from "react-router-dom";
+import { EmployeeLayout } from "../../layouts";
 import {
-  TaskCard,
   PriorityFilterDropdown,
-  AssigneeFilterDropdown,
   SortFilterDropdown,
+  TaskCard,
 } from "../../components";
 import { useTheme } from "../../context/theme";
-import addIcon from "../../assets/icons/addIcon.png";
-import { getOrganisationById } from "../../services/orgService";
-import { getProjectById } from "../../services/projectService";
-import { listTasks } from "../../services/taskService";
-import { updateTaskById } from "../../services/taskService";
+import { useAuth } from "../../hooks/useAuth";
+import { listMyProjects } from "../../services/projectService";
+import { listMyTasks, updateTaskById } from "../../services/taskService";
 
 const COLUMN_DEFS = [
   { id: "todo", title: "To Do" },
@@ -46,7 +43,6 @@ const priorityLabel = (value) => {
   if (v === "high") return "High";
   if (v === "medium") return "Medium";
   if (v === "low") return "Low";
-  // backend supports urgent; keep layout same by surfacing as High
   if (v === "urgent") return "High";
   return "Medium";
 };
@@ -67,18 +63,18 @@ const avatarColorFrom = (seed) => {
   return colors[h % colors.length];
 };
 
-const ProjectTasks = () => {
+const EmployeeDashboard = () => {
   const t = useTheme();
-  const { id, projectId } = useParams();
-  const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = Boolean(user?.is_admin);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState(["High", "Medium", "Low"]);
-  const [assigneeSearch, setAssigneeSearch] = useState("");
-  const [assigneeFilter, setAssigneeFilter] = useState([]);
   const [sortOption, setSortOption] = useState("due-desc");
-  const [orgName, setOrgName] = useState("");
-  const [projName, setProjName] = useState("");
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(null);
+
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -86,32 +82,49 @@ const ProjectTasks = () => {
   const [isUpdatingTaskId, setIsUpdatingTaskId] = useState(null);
 
   useEffect(() => {
-    const orgId = id;
-    const pid = projectId;
-    if (!orgId || !pid) return;
     let cancelled = false;
+    setError("");
+    (async () => {
+      try {
+        const res = await listMyProjects();
+        const list = Array.isArray(res?.data) ? res.data : [];
+        if (cancelled) return;
+        setProjects(list);
+        setSelectedProject((prev) => {
+          if (prev && list.some((p) => String(p?.id) === String(prev?.id))) return prev;
+          return list[0] || null;
+        });
+      } catch (e) {
+        if (!cancelled) {
+          setProjects([]);
+          setSelectedProject(null);
+          setError(e?.message || "Failed to load projects.");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const pid = selectedProject?.id;
+    if (!pid) return;
+    let cancelled = false;
+
     setIsLoading(true);
     setError("");
 
     (async () => {
       try {
-        const [orgRes, projRes, taskRes] = await Promise.all([
-          getOrganisationById(orgId),
-          getProjectById(pid),
-          listTasks({ projectId: pid }),
-        ]);
+        const res = await listMyTasks({ projectId: pid });
         if (cancelled) return;
-
-        setOrgName(orgRes?.data?.org_name || "");
-        setProjName(projRes?.data?.name || "");
-
-        const list = Array.isArray(taskRes?.data) ? taskRes.data : [];
-        setTasks(list);
+        setTasks(Array.isArray(res?.data) ? res.data : []);
       } catch (e) {
-        if (cancelled) return;
-        console.error("Failed to load tasks:", e);
-        setError(e?.message || "Failed to load tasks.");
-        setTasks([]);
+        if (!cancelled) {
+          setError(e?.message || "Failed to load tasks.");
+          setTasks([]);
+        }
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -120,9 +133,7 @@ const ProjectTasks = () => {
     return () => {
       cancelled = true;
     };
-  }, [id, projectId]);
-
-  const headerTitle = `${orgName || "Organisation"} / ${projName || "Project"} /`;
+  }, [selectedProject?.id]);
 
   const filteredColumns = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
@@ -137,24 +148,23 @@ const ProjectTasks = () => {
     };
 
     const mapped = (tasks || []).map((task) => {
-      const assigneeName = task.assignee?.name || task.assignee?.email || "";
+      const assignerName = task.assigner?.name || task.assigner?.email || "";
       return {
         id: task.id,
         priority: priorityLabel(task.priority),
         title: task.title,
         due: task.due_date ? new Date(task.due_date).toLocaleDateString() : "",
         status: task.status || "To do",
-        assigneeName,
-        assigneeInitials: assigneeName ? initialsFrom(assigneeName) : "",
-        avatarColor: avatarColorFrom(task.assignee_id || assigneeName || task.id),
+        assignerName,
+        assignerInitials: assignerName ? initialsFrom(assignerName) : "",
+        avatarColor: avatarColorFrom(task.assigner_id || assignerName || task.id),
         raw: task,
       };
     });
 
     const filtered = mapped
       .filter((t) => (query ? `${t.title} ${t.priority}`.toLowerCase().includes(query) : true))
-      .filter((t) => activePriorities.includes(t.priority))
-      .filter((t) => (assigneeFilter.length ? assigneeFilter.includes(t.assigneeName) : true));
+      .filter((t) => activePriorities.includes(t.priority));
 
     const grouped = new Map(COLUMN_DEFS.map((c) => [c.id, []]));
     for (const task of filtered) {
@@ -164,85 +174,56 @@ const ProjectTasks = () => {
     for (const [, list] of grouped) list.sort(sortByDueDate);
 
     return COLUMN_DEFS.map((c) => ({ ...c, tasks: grouped.get(c.id) || [] }));
-  }, [assigneeFilter, priorityFilter, searchQuery, sortOption, tasks]);
-
-  const assigneeOptions = useMemo(() => {
-    const names = Array.from(
-      new Set(
-        (tasks || [])
-          .map((t) => t.assignee?.name || t.assignee?.email || "")
-          .filter(Boolean)
-      )
-    );
-    names.sort((a, b) => a.localeCompare(b));
-    return names;
-  }, [tasks]);
+  }, [priorityFilter, searchQuery, sortOption, tasks]);
 
   const handleTaskClick = (task) => {
-    navigate(
-      `/organisations/${id}/projects/${projectId}/tasks/${task.id}`,
-      {
-        state: {
-          projectName: projName,
-          task: task.raw,
-        },
-      }
-    );
+    const orgId = selectedProject?.org_id;
+    const projectId = selectedProject?.id;
+    if (!orgId || !projectId) return;
+    navigate(`/organisations/${orgId}/projects/${projectId}/tasks/${task.id}`, {
+      state: { projectName: selectedProject?.name, task: task.raw },
+    });
   };
 
-  const getPriorityStyles = (priority) => {
-    switch (priority) {
-      case "High":
-        return {
-          backgroundColor: "rgba(248, 113, 113, 0.15)",
-          color: "#b91c1c",
-        };
-      case "Medium":
-        return {
-          backgroundColor: "rgba(234, 179, 8, 0.15)",
-          color: "#92400e",
-        };
-      case "Low":
-      default:
-        return {
-          backgroundColor: "rgba(34, 197, 94, 0.15)",
-          color: "#15803d",
-        };
-    }
-  };
-
-  const renderTaskCard = (task) => {
-    return (
-      <div
-        key={task.id}
-        draggable
-        onDragStart={(e) => {
-          try {
-            e.dataTransfer.setData("text/plain", String(task.id));
-            e.dataTransfer.effectAllowed = "move";
-          } catch {
-            // ignore
-          }
-        }}
-        style={{
-          opacity: isUpdatingTaskId && String(isUpdatingTaskId) === String(task.id) ? 0.7 : 1,
-          cursor: "grab",
-        }}
-        aria-label={`Task ${task.title}`}
-      >
+  const renderTaskCard = (task) => (
+    <div
+      key={task.id}
+      draggable
+      onDragStart={(e) => {
+        try {
+          e.dataTransfer.setData("text/plain", String(task.id));
+          e.dataTransfer.effectAllowed = "move";
+        } catch {
+          // ignore
+        }
+      }}
+      style={{
+        opacity: isUpdatingTaskId && String(isUpdatingTaskId) === String(task.id) ? 0.7 : 1,
+        cursor: "grab",
+      }}
+      aria-label={`Task ${task.title}`}
+    >
       <TaskCard
         priority={task.priority}
         title={task.title}
         dueDate={task.due}
-        assigneeInitials={task.assigneeInitials}
+        assigneeInitials={task.assignerInitials}
         avatarColor={task.avatarColor}
         onClick={() => handleTaskClick(task)}
       />
-      </div>
-    );
-  };
+    </div>
+  );
 
   const handleDropToColumn = async (columnId, draggedTaskId) => {
+    // Employees can only move tasks to In Review. Admins can move anywhere.
+    if (!isAdmin) {
+      const target = String(columnId || "").trim().toLowerCase();
+      const isInReview = target === "in-review" || target === "in_review";
+      if (!isInReview) {
+        setError("You can only move tasks to In Review. Only admin can move tasks to Done.");
+        return;
+      }
+    }
     const status = columnIdToStatus(columnId);
     if (!draggedTaskId) return;
 
@@ -256,7 +237,6 @@ const ProjectTasks = () => {
     setError("");
     setIsUpdatingTaskId(draggedTaskId);
 
-    // optimistic update
     const next = [...tasks];
     next[idx] = { ...current, status };
     setTasks(next);
@@ -277,35 +257,21 @@ const ProjectTasks = () => {
     }
   };
 
-  const handleClearFilters = () => {
-    setPriorityFilter(["High", "Medium", "Low"]);
-    setAssigneeSearch("");
-    setAssigneeFilter([]);
-    setSortOption("due-desc");
-    setSearchQuery("");
-  };
+  const pageTitle = selectedProject?.name
+    ? `My Tasks · ${selectedProject.name}`
+    : "My Tasks";
 
   return (
-    <OrganisationLayout
-      organisationName={headerTitle}
-      primaryActionLabel="Create Task"
-      primaryActionIcon={
-        <img
-          src={addIcon}
-          alt="Create task"
-          style={{ width: 16, height: 16 }}
-        />
-      }
-      onPrimaryAction={() =>
-        navigate(`/organisations/${id}/projects/${projectId}/tasks/create`, {
-          state: { projectName: projName, from: `${location.pathname}${location.search}` },
-        })
-      }
+    <EmployeeLayout
+      pageTitle={pageTitle}
       searchPlaceholder="Search tasks..."
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
+      projects={projects}
+      selectedProjectId={selectedProject?.id}
+      onSelectProject={setSelectedProject}
     >
-      {error && (
+      {error ? (
         <div
           style={{
             marginTop: t.spacing(2),
@@ -318,8 +284,8 @@ const ProjectTasks = () => {
         >
           {error}
         </div>
-      )}
-      {/* Filters row */}
+      ) : null}
+
       <div
         style={{
           display: "flex",
@@ -330,22 +296,15 @@ const ProjectTasks = () => {
           alignItems: "flex-start",
         }}
       >
-        <PriorityFilterDropdown
-          selected={priorityFilter}
-          onChange={setPriorityFilter}
-        />
-        <AssigneeFilterDropdown
-          search={assigneeSearch}
-          selected={assigneeFilter}
-          options={assigneeOptions}
-          onSearchChange={setAssigneeSearch}
-          onSelectedChange={setAssigneeFilter}
-        />
+        <PriorityFilterDropdown selected={priorityFilter} onChange={setPriorityFilter} />
         <SortFilterDropdown value={sortOption} onChange={setSortOption} />
-
         <button
           type="button"
-          onClick={handleClearFilters}
+          onClick={() => {
+            setPriorityFilter(["High", "Medium", "Low"]);
+            setSortOption("due-desc");
+            setSearchQuery("");
+          }}
           style={{
             marginLeft: "auto",
             padding: `${t.spacing(1.5)} ${t.spacing(3)}`,
@@ -363,7 +322,6 @@ const ProjectTasks = () => {
         </button>
       </div>
 
-      {/* Kanban columns */}
       <div
         style={{
           display: "grid",
@@ -375,59 +333,59 @@ const ProjectTasks = () => {
           <div>Loading tasks...</div>
         ) : (
           filteredColumns.map((column) => (
-          <div
-            key={column.id}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOverColumnId(column.id);
-            }}
-            onDragLeave={() => setDragOverColumnId(null)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOverColumnId(null);
-              const draggedTaskId = e.dataTransfer.getData("text/plain");
-              handleDropToColumn(column.id, draggedTaskId);
-            }}
-            style={{
-              backgroundColor: t.colors.taskSectionBackground,
-              borderRadius: "18px",
-              padding: t.spacing(3),
-              minHeight: "480px",
-              display: "flex",
-              flexDirection: "column",
-              gap: t.spacing(3),
-              outline:
-                dragOverColumnId && String(dragOverColumnId) === String(column.id)
-                  ? `2px dashed ${t.colors.primary}`
-                  : "none",
-              outlineOffset: 4,
-            }}
-          >
             <div
-              style={{
-                fontSize: t.font.size.md,
-                fontWeight: t.font.weight.semiBold,
-                color: t.colors.textHeadingDark,
+              key={column.id}
+              onDragOver={(e) => {
+                e.preventDefault();
+                if (!isAdmin) {
+                  const target = String(column.id || "").trim().toLowerCase();
+                  const isInReview = target === "in-review" || target === "in_review";
+                  if (!isInReview) return;
+                }
+                setDragOverColumnId(column.id);
               }}
-            >
-              {column.title}
-            </div>
-
-            <div
+              onDragLeave={() => setDragOverColumnId(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOverColumnId(null);
+                const draggedTaskId = e.dataTransfer.getData("text/plain");
+                handleDropToColumn(column.id, draggedTaskId);
+              }}
               style={{
+                backgroundColor: t.colors.taskSectionBackground,
+                borderRadius: "18px",
+                padding: t.spacing(3),
+                minHeight: "480px",
                 display: "flex",
                 flexDirection: "column",
                 gap: t.spacing(3),
+                outline:
+                  dragOverColumnId && String(dragOverColumnId) === String(column.id)
+                    ? `2px dashed ${t.colors.primary}`
+                    : "none",
+                outlineOffset: 4,
               }}
             >
-              {column.tasks.map((task) => renderTaskCard(task))}
+              <div
+                style={{
+                  fontSize: t.font.size.md,
+                  fontWeight: t.font.weight.semiBold,
+                  color: t.colors.textHeadingDark,
+                }}
+              >
+                {column.title}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: t.spacing(3) }}>
+                {column.tasks.map((task) => renderTaskCard(task))}
+              </div>
             </div>
-          </div>
-        ))
+          ))
         )}
       </div>
-    </OrganisationLayout>
+    </EmployeeLayout>
   );
 };
 
-export default ProjectTasks;
+export default EmployeeDashboard;
+
+

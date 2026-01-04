@@ -9,6 +9,8 @@ const router = express.Router();
 
 // All project routes are protected
 router.get('/admin', requireAuth, projectController.listAdminProjects);
+// List projects where current user is a project member (or creator)
+router.get('/mine', requireAuth, projectController.listMyProjects);
 // Get projects created by the given user (projects.created_by = :userId)
 router.get('/created-by/:userId', requireAuth, projectController.listProjectsCreatedByUser);
 // Project task stats (must be a project member)

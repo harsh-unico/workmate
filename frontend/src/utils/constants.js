@@ -70,6 +70,7 @@ export const ROUTES = {
   REGISTER: '/register',
   OTP_VERIFICATION: '/otp',
   DASHBOARD: '/dashboard',
+  EMPLOYEE_DASHBOARD: '/employee',
   ORGANISATIONS: '/organisations',
   CREATE_ORGANISATION: '/organisations/create',
   ORGANISATION_DETAIL: '/organisations/:id/:section',

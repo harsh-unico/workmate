@@ -19,6 +19,16 @@ export const listTasks = async (filters = {}) => {
   return apiClient.get(`${API_ENDPOINTS.TASK.LIST}${qs ? `?${qs}` : ''}`)
 }
 
+export const listMyTasks = async (filters = {}) => {
+  const params = new URLSearchParams()
+  Object.entries(filters || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === '') return
+    params.set(k, String(v))
+  })
+  const qs = params.toString()
+  return apiClient.get(`${API_ENDPOINTS.TASK.LIST}/mine${qs ? `?${qs}` : ''}`)
+}
+
 export const getTaskById = async (taskId) => {
   if (!taskId) throw new Error('taskId is required')
   return apiClient.get(`${API_ENDPOINTS.TASK.LIST}/${encodeURIComponent(String(taskId))}`)

@@ -264,7 +264,7 @@ const OrganisationOverview = () => {
                     View Details
                   </button>
                 </div>
-                  </div>
+              </div>
                 );
               })
             )}

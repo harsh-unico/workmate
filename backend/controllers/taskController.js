@@ -172,19 +172,25 @@ function listTasks(req, res) {
 
     const tasks = await taskRepository.findMany(filters);
 
-    // Attach safe assignee info for UI (email/name) when possible
-    const assigneeIds = Array.from(
-      new Set((tasks || []).map((t) => t.assignee_id).filter(Boolean).map(String))
+    // Attach safe assignee + assigner info for UI (email/name) when possible
+    const userIds = Array.from(
+      new Set(
+        (tasks || [])
+          .flatMap((t) => [t.assignee_id, t.assigner_id])
+          .filter(Boolean)
+          .map(String)
+      )
     );
-    const assignees = assigneeIds.length > 0 ? await userRepository.findManyByIds(assigneeIds) : [];
-    const assigneesById = new Map(assignees.map((u) => [String(u.id), u]));
+    const users = userIds.length > 0 ? await userRepository.findManyByIds(userIds) : [];
+    const usersById = new Map(users.map((u) => [String(u.id), u]));
 
-    const withAssignee = (tasks || []).map((task) => ({
+    const withUsers = (tasks || []).map((task) => ({
       ...task,
-      assignee: task.assignee_id ? (assigneesById.get(String(task.assignee_id)) || null) : null
+      assignee: task.assignee_id ? (usersById.get(String(task.assignee_id)) || null) : null,
+      assigner: task.assigner_id ? (usersById.get(String(task.assigner_id)) || null) : null
     }));
 
-    const taskIds = (withAssignee || []).map((t) => t.id).filter(Boolean).map(String);
+    const taskIds = (withUsers || []).map((t) => t.id).filter(Boolean).map(String);
     const attachments = await attachmentRepository.findManyByEntityIds('task', taskIds);
     const byTaskId = new Map();
     for (const a of attachments || []) {
@@ -200,7 +206,65 @@ function listTasks(req, res) {
       });
     }
 
-    const withAttachments = (withAssignee || []).map((t) => ({
+    const withAttachments = (withUsers || []).map((t) => ({
+      ...t,
+      attachments: byTaskId.get(String(t.id)) || []
+    }));
+
+    return { data: withAttachments };
+  }, req, res);
+}
+
+function listMyTasks(req, res) {
+  return handle(async () => {
+    const userId = req.user && req.user.id ? String(req.user.id) : null;
+    if (!userId) {
+      const error = new Error('Not authenticated');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const { projectId } = req.query || {};
+    const filters = { assignee_id: String(userId) };
+    if (projectId) filters.project_id = String(projectId);
+
+    // Reuse listTasks logic by calling it through repository + same enrichment
+    const tasks = await taskRepository.findMany(filters);
+
+    const userIds = Array.from(
+      new Set(
+        (tasks || [])
+          .flatMap((t) => [t.assignee_id, t.assigner_id])
+          .filter(Boolean)
+          .map(String)
+      )
+    );
+    const users = userIds.length > 0 ? await userRepository.findManyByIds(userIds) : [];
+    const usersById = new Map(users.map((u) => [String(u.id), u]));
+
+    const withUsers = (tasks || []).map((task) => ({
+      ...task,
+      assignee: task.assignee_id ? (usersById.get(String(task.assignee_id)) || null) : null,
+      assigner: task.assigner_id ? (usersById.get(String(task.assigner_id)) || null) : null
+    }));
+
+    const taskIds = (withUsers || []).map((t) => t.id).filter(Boolean).map(String);
+    const attachments = await attachmentRepository.findManyByEntityIds('task', taskIds);
+    const byTaskId = new Map();
+    for (const a of attachments || []) {
+      const tid = String(a.entity_id || '');
+      if (!tid) continue;
+      if (!byTaskId.has(tid)) byTaskId.set(tid, []);
+      byTaskId.get(tid).push({
+        id: a.id,
+        name: a.file_name || 'attachment',
+        size: a.file_size ?? undefined,
+        type: '',
+        url: a.file_url || undefined
+      });
+    }
+
+    const withAttachments = (withUsers || []).map((t) => ({
       ...t,
       attachments: byTaskId.get(String(t.id)) || []
     }));
@@ -327,6 +391,17 @@ function updateTaskById(req, res) {
 
     const effectiveProjectId = projectId !== undefined ? projectId : existing.project_id;
 
+    // Only global admins can move a task to DONE (employees can move up to IN_REVIEW)
+    if (status !== undefined) {
+      const nextStatus = normalizeTaskStatus(status);
+      const isAdmin = Boolean(req.user?.profile?.is_admin);
+      if (String(nextStatus || '').toLowerCase() === String(TASK_STATUS.DONE).toLowerCase() && !isAdmin) {
+        const error = new Error('Only admin can move task to Done');
+        error.statusCode = 403;
+        throw error;
+      }
+    }
+
     // If we have a project and an assignee, ensure they belong to the project.
     if (effectiveProjectId && resolvedAssigneeId) {
       const membership = await projectMemberRepository.findOne({
@@ -421,6 +496,7 @@ function deleteTaskById(req, res) {
 module.exports = {
   createTask,
   listTasks,
+  listMyTasks,
   listTasksByAssignee,
   listTasksByAssigner,
   getTaskById,

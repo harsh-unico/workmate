@@ -44,5 +44,9 @@ export const deleteProjectById = async (projectId) => {
   return apiClient.delete(`${API_ENDPOINTS.PROJECT.LIST}/${encodeURIComponent(String(projectId))}`)
 }
 
+export const listMyProjects = async () => {
+  return apiClient.get(`${API_ENDPOINTS.PROJECT.LIST}/mine?assignedOnly=true`)
+}
+
 
 

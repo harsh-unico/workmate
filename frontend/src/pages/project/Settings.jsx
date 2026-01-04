@@ -123,7 +123,7 @@ const ProjectSettings = () => {
             url: a.file_url || undefined,
           }));
           if (!cancelled) setExistingAttachments(mapped);
-        } catch {
+      } catch {
           // fallback to project endpoint attachments if list endpoint fails
           if (!cancelled) setExistingAttachments(Array.isArray(proj?.attachments) ? proj.attachments : []);
         }
@@ -308,7 +308,7 @@ const ProjectSettings = () => {
 
         setSuccess("Project updated successfully.");
       } catch (err) {
-        // eslint-disable-next-line no-console
+    // eslint-disable-next-line no-console
         console.error("Failed to update project:", err);
         setError(err?.message || "Failed to update project.");
       } finally {

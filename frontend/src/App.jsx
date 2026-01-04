@@ -7,6 +7,7 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 import Organisations from "./pages/dashboard/Organisations";
 import CreateOrganisation from "./pages/dashboard/CreateOrganisation";
+import EmployeeDashboard from "./pages/employee/Dashboard";
 import OrganisationOverview from "./pages/organisation/Overview";
 import OrganisationProjects from "./pages/organisation/Projects";
 import CreateProject from "./pages/organisation/CreateProject";
@@ -56,6 +57,15 @@ function App() {
           element={
             <PrivateRoute>
               <CreateOrganisation />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path={ROUTES.EMPLOYEE_DASHBOARD}
+          element={
+            <PrivateRoute>
+              <EmployeeDashboard />
             </PrivateRoute>
           }
         />

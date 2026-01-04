@@ -11,9 +11,11 @@ async function handle(controllerFn, req, res) {
       res.json(result);
     }
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
     const status = err.statusCode || 400;
+    if (status >= 500) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
     res.status(status).json({
       error: err.message || 'Unexpected error'
     });
@@ -85,7 +87,9 @@ function me(req, res) {
       throw error;
     }
 
-    const profile = await userRepository.findByEmail(req.user.email);
+    // requireAuth already resolves and attaches the profile via userRepository.findByEmail.
+    // Avoid a second DB call here (can cause noisy failures if Supabase is transient).
+    const profile = req.user.profile || null;
     if (!profile) {
       const error = new Error('User profile not found');
       error.statusCode = 404;

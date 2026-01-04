@@ -33,12 +33,17 @@ const Login = () => {
   // Form submission handler
   const handleLogin = async (values) => {
     try {
-      await login({
+      const res = await login({
         email: values.email,
         password: values.password,
       })
-      // On successful login, navigate to dashboard
-      navigate(ROUTES.DASHBOARD)
+      const profile = res?.profile || res?.user || null
+      // On successful login, route based on user.is_admin
+      if (profile && profile.is_admin === false) {
+        navigate(ROUTES.EMPLOYEE_DASHBOARD)
+      } else {
+        navigate(ROUTES.DASHBOARD)
+      }
     } catch (error) {
       throw error
     }

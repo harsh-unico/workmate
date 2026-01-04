@@ -10,6 +10,7 @@ const router = express.Router();
 // All task routes are protected
 router.post('/', requireAuth, taskController.createTask);
 router.get('/', requireAuth, taskController.listTasks);
+router.get('/mine', requireAuth, taskController.listMyTasks);
 router.get('/assignee/:userId', requireAuth, taskController.listTasksByAssignee);
 router.get('/assigner/:userId', requireAuth, taskController.listTasksByAssigner);
 router.get('/:id', requireAuth, taskController.getTaskById);

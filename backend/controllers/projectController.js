@@ -5,6 +5,7 @@ const projectMemberRepository = require('../repositories/projectMemberRepository
 const { PROJECT_MEMBER_ROLE } = require('../enums');
 const userRepository = require('../repositories/userRepository');
 const orgMemberRepository = require('../repositories/orgMemberRepository');
+const orgRepository = require('../repositories/orgRepository');
 const attachmentRepository = require('../repositories/attachmentRepository');
 const taskRepository = require('../repositories/taskRepository');
 const commentRepository = require('../repositories/commentRepository');
@@ -102,8 +103,8 @@ async function requireProjectMember(req, projectId) {
     }
   }
 
-  const error = new Error('Forbidden');
-  error.statusCode = 403;
+    const error = new Error('Forbidden');
+    error.statusCode = 403;
   throw error;
 }
 
@@ -521,6 +522,47 @@ function listAdminProjects(req, res) {
   }, req, res);
 }
 
+function listMyProjects(req, res) {
+  return handle(async () => {
+    const userId = req.user && req.user.id ? String(req.user.id) : null;
+    if (!userId) {
+      const error = new Error('Not authenticated');
+      error.statusCode = 401;
+      throw error;
+    }
+
+    const assignedOnly =
+      String(req.query?.assignedOnly ?? 'true').trim().toLowerCase() !== 'false';
+
+    // IMPORTANT: "My projects" for employees should come from project_members,
+    // not org membership and not "created_by".
+    const memberships = await projectMemberRepository.findMany({ user_id: String(userId) });
+    let projectIds = Array.from(
+      new Set((memberships || []).map((m) => m.project_id).filter(Boolean).map(String))
+    );
+
+    // Optional: only show projects where the user has at least one assigned task
+    if (assignedOnly) {
+      const assignedProjectIds = await taskRepository.findProjectIdsByAssigneeId(userId);
+      const allow = new Set(assignedProjectIds);
+      projectIds = projectIds.filter((pid) => allow.has(String(pid)));
+    }
+    const projects = await projectRepository.findManyByIds(projectIds);
+
+    // Attach org name (for nicer sidebar labels)
+    const orgIds = Array.from(new Set((projects || []).map((p) => p.org_id).filter(Boolean).map(String)));
+    const orgs = orgIds.length ? await orgRepository.findManyByIds(orgIds) : [];
+    const orgById = new Map((orgs || []).map((o) => [String(o.id), o]));
+
+    return {
+      data: (projects || []).map((p) => ({
+        ...p,
+        org_name: p.org_id ? (orgById.get(String(p.org_id))?.org_name || null) : null
+      }))
+    };
+  }, req, res);
+}
+
 function listProjectsCreatedByUser(req, res) {
   return handle(async () => {
     const userId = req.params && req.params.userId ? String(req.params.userId) : null;
@@ -550,6 +592,7 @@ module.exports = {
   getProjectTeamStats,
   deleteProjectById,
   listAdminProjects,
+  listMyProjects,
   listProjectsCreatedByUser
 };
 
