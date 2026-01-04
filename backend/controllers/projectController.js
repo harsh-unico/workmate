@@ -305,6 +305,52 @@ function getProjectTaskStats(req, res) {
   }, req, res);
 }
 
+function getProjectTeamStats(req, res) {
+  return handle(async () => {
+    const projectId = req.params && req.params.projectId ? String(req.params.projectId) : null;
+    if (!projectId) {
+      const error = new Error('projectId is required');
+      error.statusCode = 400;
+      throw error;
+    }
+
+    await requireProjectMember(req, projectId);
+
+    const members = await projectMemberRepository.findMany({ project_id: String(projectId) });
+    const userIds = Array.from(new Set((members || []).map((m) => m.user_id).filter(Boolean).map(String)));
+    const users = userIds.length ? await userRepository.findManyByIds(userIds) : [];
+    const userById = new Map((users || []).map((u) => [String(u.id), u]));
+
+    const tasks = await taskRepository.findMany({ project_id: String(projectId) });
+    const countsByAssignee = new Map();
+    for (const t of tasks || []) {
+      if (!t.assignee_id) continue;
+      const key = String(t.assignee_id);
+      countsByAssignee.set(key, (countsByAssignee.get(key) || 0) + 1);
+    }
+    const totalAssigned = Array.from(countsByAssignee.values()).reduce((a, b) => a + b, 0);
+
+    const rows = (members || []).map((m) => {
+      const uid = m.user_id ? String(m.user_id) : '';
+      const user = uid ? (userById.get(uid) || null) : null;
+      const assignedCount = uid ? (countsByAssignee.get(uid) || 0) : 0;
+      const contributionPercent =
+        totalAssigned > 0 ? Math.round((assignedCount / totalAssigned) * 100) : 0;
+      return {
+        id: m.id,
+        role: m.role || null,
+        user,
+        assignedCount,
+        contributionPercent
+      };
+    });
+
+    rows.sort((a, b) => (b.contributionPercent || 0) - (a.contributionPercent || 0));
+
+    return { data: rows };
+  }, req, res);
+}
+
 function listAdminProjects(req, res) {
   return handle(async () => {
     const userId = req.user && req.user.id ? String(req.user.id) : null;
@@ -349,6 +395,7 @@ module.exports = {
   getProjectById,
   updateProjectById,
   getProjectTaskStats,
+  getProjectTeamStats,
   listAdminProjects,
   listProjectsCreatedByUser
 };

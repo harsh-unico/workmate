@@ -6,7 +6,11 @@ import { useTheme } from "../../context/theme";
 import addIcon from "../../assets/icons/addIcon.png";
 import AboutProjectPopup from "./AboutProjectPopup";
 import { getOrganisationById } from "../../services/orgService";
-import { getProjectById, getProjectTaskStats } from "../../services/projectService";
+import {
+  getProjectById,
+  getProjectTaskStats,
+  getProjectTeamStats,
+} from "../../services/projectService";
 
 const ProjectOverview = () => {
   const t = useTheme();
@@ -24,6 +28,7 @@ const ProjectOverview = () => {
     completed: null,
     pending: null,
   });
+  const [teamMembers, setTeamMembers] = useState([]);
 
   useEffect(() => {
     if (!id || !projectId) return;
@@ -31,10 +36,11 @@ const ProjectOverview = () => {
     setProjectError("");
     (async () => {
       try {
-        const [orgRes, projRes, statsRes] = await Promise.all([
+        const [orgRes, projRes, statsRes, teamRes] = await Promise.all([
           getOrganisationById(id),
           getProjectById(projectId),
           getProjectTaskStats(projectId),
+          getProjectTeamStats(projectId),
         ]);
         if (cancelled) return;
         setOrgName(orgRes?.data?.org_name || "Organisation");
@@ -45,12 +51,41 @@ const ProjectOverview = () => {
           completed: Number(statsRes?.data?.completed ?? 0),
           pending: Number(statsRes?.data?.pending ?? 0),
         });
+
+        const rows = Array.isArray(teamRes?.data) ? teamRes.data : [];
+        const roleLabel = (r) => {
+          const s = String(r || "")
+            .trim()
+            .toLowerCase();
+          if (s === "owner") return "Owner";
+          if (s === "manager") return "Manager";
+          if (s === "viewer") return "Viewer";
+          if (s === "member") return "Member";
+          return r ? String(r) : "Member";
+        };
+        const mapped = rows.map((r) => {
+          const u = r?.user || {};
+          return {
+            key: r?.id || u?.id || u?.email,
+            name: u?.name || u?.email || "Member",
+            role: roleLabel(r?.role),
+            contribution: Number(r?.contributionPercent ?? 0),
+            assignedCount: Number(r?.assignedCount ?? 0),
+          };
+        });
+        setTeamMembers(mapped);
       } catch (e) {
         if (cancelled) return;
         setOrgName("Organisation");
         setProject(null);
         setProjectError(e?.message || "Failed to load project.");
-        setStatsData({ progressPercent: null, total: null, completed: null, pending: null });
+        setStatsData({
+          progressPercent: null,
+          total: null,
+          completed: null,
+          pending: null,
+        });
+        setTeamMembers([]);
       }
     })();
     return () => {
@@ -67,17 +102,20 @@ const ProjectOverview = () => {
           .join(" ")
       : "Project Alpha";
 
-  const projectName = project?.name || projectNameFromState || derivedProjectName;
+  const projectName =
+    project?.name || projectNameFromState || derivedProjectName;
 
-  const headerTitle = `${orgName || "Organisation"} / ${projectName || "Project"} /`;
+  const headerTitle = `${orgName || "Organisation"} / ${
+    projectName || "Project"
+  } /`;
 
   const descriptionHtml = useMemo(() => {
     const d =
       typeof project?.description === "string"
         ? project.description
         : typeof project?.about === "string"
-          ? project.about
-          : "";
+        ? project.about
+        : "";
     return d;
   }, [project]);
 
@@ -115,14 +153,6 @@ const ProjectOverview = () => {
     },
   ];
 
-  const teamMembers = [
-    { name: "Arthur Morgan", role: "Lead Developer", contribution: 10 },
-    { name: "Saddie Adler", role: "QA Tester", contribution: 22 },
-    { name: "John Mark", role: "UI/UX Designer", contribution: 30 },
-    { name: "Emily Ray", role: "Junior Developer", contribution: 45 },
-    { name: "Jane Doe", role: "Marketing Specialist", contribution: 70 },
-  ];
-
   const activityFeed = [
     {
       id: 1,
@@ -131,8 +161,7 @@ const ProjectOverview = () => {
     },
     {
       id: 2,
-      description:
-        "Arthur Morgan commented on the task Website Redesign.",
+      description: "Arthur Morgan commented on the task Website Redesign.",
       time: "8 hours ago",
     },
     {
@@ -160,7 +189,10 @@ const ProjectOverview = () => {
       }
       onPrimaryAction={() =>
         navigate(`/organisations/${id}/projects/${projectId}/tasks/create`, {
-          state: { projectName, from: `${location.pathname}${location.search}` },
+          state: {
+            projectName,
+            from: `${location.pathname}${location.search}`,
+          },
         })
       }
       searchPlaceholder="Search tasks..."
@@ -252,21 +284,25 @@ const ProjectOverview = () => {
           }}
         >
           {/* Team Members */}
-          <DashboardSectionCard
-            title="Team Members"
-            actionLabel="View All"
-            onAction={() => {}}
-          >
+          <DashboardSectionCard title="Team Members">
+            <style>{`
+              .team-members-scroll::-webkit-scrollbar { width: 0px; height: 0px; }
+              .team-members-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+            `}</style>
             <div
+              className="team-members-scroll"
               style={{
                 display: "flex",
                 flexDirection: "column",
                 gap: t.spacing(3),
+                maxHeight: 320,
+                overflowY: "auto",
+                paddingRight: 2,
               }}
             >
               {teamMembers.map((member) => (
                 <div
-                  key={member.name}
+                  key={member.key || member.name}
                   style={{
                     display: "grid",
                     gridTemplateColumns: "minmax(0, 2fr) minmax(0, 3fr) auto",
@@ -321,7 +357,10 @@ const ProjectOverview = () => {
                       minWidth: "80px",
                     }}
                   >
-                    Contribution: {member.contribution}%
+                    Contribution: {member.contribution}%{" "}
+                    {Number.isFinite(member.assignedCount)
+                      ? `· ${member.assignedCount}`
+                      : ""}
                   </div>
                 </div>
               ))}
@@ -371,7 +410,9 @@ const ProjectOverview = () => {
           onClose={() => setIsAboutPopupOpen(false)}
           projectName={projectName || "Project"}
           descriptionHtml={descriptionHtml || ""}
-          attachments={Array.isArray(project?.attachments) ? project.attachments : []}
+          attachments={
+            Array.isArray(project?.attachments) ? project.attachments : []
+          }
           error={projectError}
         />
       </div>
@@ -380,5 +421,3 @@ const ProjectOverview = () => {
 };
 
 export default ProjectOverview;
-
-

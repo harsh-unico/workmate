@@ -13,6 +13,8 @@ router.get('/admin', requireAuth, projectController.listAdminProjects);
 router.get('/created-by/:userId', requireAuth, projectController.listProjectsCreatedByUser);
 // Project task stats (must be a project member)
 router.get('/:projectId/tasks/stats', requireAuth, projectController.getProjectTaskStats);
+// Project team stats (must be a project member)
+router.get('/:projectId/team/stats', requireAuth, projectController.getProjectTeamStats);
 // Get a single project by id (must be a project member)
 router.get('/:projectId', requireAuth, projectController.getProjectById);
 // Update project (must be a project admin: owner/manager)
